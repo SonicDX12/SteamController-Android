@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SteamController" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#66C0F4</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="colorPrimaryContainer">#2A475E</item>
+        <item name="colorOnPrimaryContainer">#FFFFFF</item>
+        <item name="colorSecondary">#66C0F4</item>
+        <item name="colorOnSecondary">#000000</item>
+        <item name="colorSurface">#1B2838</item>
+        <item name="colorOnSurface">#FFFFFF</item>
+        <item name="colorSurfaceVariant">#2A475E</item>
+        <item name="colorOnSurfaceVariant">#C6D4DF</item>
+        <item name="android:windowBackground">#1B2838</item>
+        <item name="android:statusBarColor">#1B2838</item>
+        <item name="android:navigationBarColor">#1B2838</item>
+    </style>
+</resources>

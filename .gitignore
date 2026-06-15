@@ -1,0 +1,59 @@
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle files
+.gradle/
+build/
+/build
+/captures
+.externalNativeBuild
+.cxx
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+.kotlin/
+*.iws
+*.ipr
+.navigation/
+
+# Keystore files (signing secrets — NEVER commit)
+*.jks
+*.keystore
+keystore.properties
+keystore/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Tooling artifacts
+.cxx/
+
+# Claude Code workspace metadata (private)
+.claude/
+CLAUDE.md

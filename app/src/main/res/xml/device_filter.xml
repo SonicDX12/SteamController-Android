@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Valve Steam Controller: VID 0x28DE = 10334 decimal -->
+    <usb-device vendor-id="10334" />
+</resources>

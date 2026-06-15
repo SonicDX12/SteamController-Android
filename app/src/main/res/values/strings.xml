@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Steam Controller</string>
+    <string name="status_disconnected">Controller disconnected</string>
+    <string name="status_connected">Controller connected</string>
+    <string name="status_running">Controller active</string>
+    <string name="shizuku_not_running">Shizuku is not running. Please start Shizuku first.</string>
+    <string name="shizuku_permission_denied">Shizuku permission denied.</string>
+    <string name="btn_start">Start Service</string>
+    <string name="btn_stop">Stop Service</string>
+    <string name="btn_debug">Debug HID</string>
+
+    <string name="help_dialog_title">Switching connection modes</string>
+    <string name="help_dialog_message"><![CDATA[
+<p>The Steam Controller uses the right Puck slot by default. Pairing to another device will overwrite the default pairing. To maintain two pairings simultaneously, one in each slot, switch wireless modes to the left slot before completing a second pairing. Once two pairings are complete, you can switch between them at any time.</p>
+
+<p>The Steam Controller can also maintain a Bluetooth pairing independently of its Puck pairings.</p>
+
+<p>When powered on, the controller connects by default to the last paired connection used. To power off, hold the <b>Steam</b> button for ~5 seconds until you hear the chime and the LED turns off.</p>
+
+<p><b>To switch wireless modes:</b> start with the controller turned off, then power it on with one of:</p>
+<ul>
+<li><b>Puck (right slot)</b> — hold <b>A + R1 + Steam</b>, chime + white LED.</li>
+<li><b>Puck (left slot)</b> — hold <b>A + L1 + Steam</b>, chime + white LED.</li>
+<li><b>Bluetooth</b> — hold <b>B + R1 + Steam</b>, chime + blue LED.</li>
+</ul>
+
+<p><b>To use wired USB-C:</b></p>
+<ul>
+<li>If the controller is <b>off</b>, plug it into the device. Chime + green LED.</li>
+<li>If the controller is <b>on</b> in another mode, hold <b>Steam</b> while plugging it in. Chime + green LED.</li>
+</ul>
+    ]]></string>
+    <string name="notification_channel_name">Controller Service</string>
+    <string name="notification_title">Steam Controller</string>
+    <string name="notification_text">Starting…</string>
+    <string name="notif_mode_uinput">Emulating %1$s</string>
+    <string name="notif_mode_inject">Fallback: Shizuku inject (limited)</string>
+    <string name="notif_mode_none">No injection method available</string>
+    <string name="notif_starting">Connecting…</string>
+</resources>
