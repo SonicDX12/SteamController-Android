@@ -62,6 +62,23 @@ class CalibrationActivity : AppCompatActivity() {
             Prefs.setRumbleIntensity(this, pct)
         })
 
+        // Mouse sensitivity slider — only relevant in Desktop profile but always visible
+        val savedSens = Prefs.getMouseSensitivity(this)
+        binding.sliderMouseSensitivity.value = savedSens
+        binding.tvMouseSensitivity.text = "%.1f×".format(savedSens)
+        binding.sliderMouseSensitivity.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
+            binding.tvMouseSensitivity.text = "%.1f×".format(value)
+            Prefs.setMouseSensitivity(this, value)
+        })
+
+        // Trackpads-as-mouse toggle (active alongside Xbox/PS profiles only).
+        // UInputGamepad re-reads the pref at most every 250ms so flipping it is
+        // effectively live without restarting the service.
+        binding.switchTrackpadAsMouse.isChecked = Prefs.getTrackpadAsMouseInGamepad(this)
+        binding.switchTrackpadAsMouse.setOnCheckedChangeListener { _, checked ->
+            Prefs.setTrackpadAsMouseInGamepad(this, checked)
+        }
+
         // Live preview from the running service
         lifecycleScope.launch {
             ControllerService.stateFlow.filterNotNull().collect { state ->
@@ -122,13 +139,14 @@ class CalibrationActivity : AppCompatActivity() {
             saveRight()
         }
 
-        binding.btnLeftSetCenter.setOnClickListener {
-            leftCal = leftCal.copy(centerX = lastLeftRawX, centerY = lastLeftRawY)
-            saveLeft()
-        }
-        binding.btnRightSetCenter.setOnClickListener {
+        // V1.2: every layout (phone, sw600dp, TV) exposes a single Calibrate All button.
+        // The old per-stick Set center buttons were removed; their bindings would NPE.
+        binding.btnCalibrateAll.setOnClickListener {
+            leftCal  = leftCal.copy(centerX = lastLeftRawX, centerY = lastLeftRawY)
             rightCal = rightCal.copy(centerX = lastRightRawX, centerY = lastRightRawY)
+            saveLeft()
             saveRight()
+            android.widget.Toast.makeText(this, "Sticks calibrated", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 

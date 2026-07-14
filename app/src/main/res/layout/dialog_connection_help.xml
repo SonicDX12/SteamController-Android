@@ -15,31 +15,26 @@
         <!-- Paragraph 1 -->
         <TextView
             style="@style/HelpParagraph"
-            android:text="The Steam Controller uses the right Puck slot by default. Pairing to another device will overwrite the default pairing. To maintain two pairings simultaneously, one in each slot, switch wireless modes to the left slot before completing a second pairing. Once two pairings are complete, you can switch between them at any time."
-            tools:ignore="HardcodedText" />
+            android:text="@string/help_para_puck_slots" />
 
         <!-- Paragraph 2 -->
         <TextView
             style="@style/HelpParagraph"
-            android:text="The Steam Controller can also maintain a Bluetooth pairing independently of its Puck pairings."
-            tools:ignore="HardcodedText" />
+            android:text="@string/help_para_bt_independent" />
 
         <!-- Paragraph 3 -->
         <TextView
             style="@style/HelpParagraph"
-            android:text="When powered on, the controller connects by default to the last paired connection used. To power off, hold the Steam button for ~5 seconds until you hear the chime and the LED turns off."
-            tools:ignore="HardcodedText" />
+            android:text="@string/help_para_power_off" />
 
         <!-- Section: wireless modes -->
         <TextView
             style="@style/HelpSectionLabel"
-            android:text="To switch wireless modes:"
-            tools:ignore="HardcodedText" />
+            android:text="@string/help_section_wireless" />
 
         <TextView
             style="@style/HelpParagraph"
-            android:text="Start with the controller turned off, then power it on with one of these combos:"
-            tools:ignore="HardcodedText" />
+            android:text="@string/help_para_wireless_intro" />
 
         <include layout="@layout/include_help_bullet" android:id="@+id/bulletPuckRight" />
         <include layout="@layout/include_help_bullet" android:id="@+id/bulletPuckLeft" />
@@ -48,8 +43,7 @@
         <!-- Section: wired -->
         <TextView
             style="@style/HelpSectionLabel"
-            android:text="To use wired USB-C:"
-            tools:ignore="HardcodedText" />
+            android:text="@string/help_section_wired" />
 
         <include layout="@layout/include_help_bullet" android:id="@+id/bulletWiredOff" />
         <include layout="@layout/include_help_bullet" android:id="@+id/bulletWiredOn" />

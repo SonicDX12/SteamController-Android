@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Steam Input — sd_button_menu.svg (Steam Deck Menu = 3 lines). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp" android:height="36dp"
+    android:viewportWidth="32" android:viewportHeight="32">
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M0,16 m0,-7.33333 a7.33333,7.33333 0 0,1 7.33333,-7.33333 h17.33334 a7.33333,7.33333 0 0,1 7.33333,7.33333 v14.66667 a7.33333,7.33333 0 0,1 -7.33333,7.33333 h-17.33334 a7.33333,7.33333 0 0,1 -7.33333,-7.33333 z" />
+    <path android:fillColor="#0E141B" android:pathData="M11.3334,11.7222h9.33333v1.71111h-9.33333z" />
+    <path android:fillColor="#0E141B" android:pathData="M11.3334,18.5667h9.33333v1.71111h-9.33333z" />
+    <path android:fillColor="#0E141B" android:pathData="M11.3334,15.1445h9.33333v1.71111h-9.33333z" />
+</vector>

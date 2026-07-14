@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Valve Steam Input icons (Steam install folder) — shared_button_a.svg. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp" android:height="36dp"
+    android:viewportWidth="32" android:viewportHeight="32">
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M30.5,16C30.5,24.0081 24.0081,30.5 16,30.5C7.99187,30.5 1.5,24.0081 1.5,16C1.5,7.99187 7.99187,1.5 16,1.5C24.0081,1.5 30.5,7.99187 30.5,16Z" />
+    <path android:fillColor="#0E141B"
+        android:pathData="M22.5,22.5H19.4603L18.5426,19.8771H13.3044L12.425,22.5H9.5L14.5088,9H17.3382L22.5,22.5ZM15.9044,12.2207L14.0691,17.6207H17.7779L15.9044,12.2207Z" />
+</vector>

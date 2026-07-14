@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DebugActivity (television, uiMode=television) — V1.2.
+  Mirrors the sw600dp 2-column layout (fits a TV's wide landscape screen well as-is),
+  with TV conventions: overscan-safe horizontal padding, hidden scrollbar, 64dp toolbar.
+  Read-only diagnostic screen — no focusable controls, so no <requestFocus/> needed.
+-->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:background="?attr/colorSurface">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:background="?attr/colorSurface"
+            app:title="@string/debug_title"
+            app:titleTextColor="?attr/colorPrimary"
+            app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
+            app:navigationIconTint="?attr/colorPrimary"
+            app:menu="@menu/menu_debug" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="none"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="48dp"
+            android:paddingVertical="16dp">
+
+            <!-- Read-only notice — these chips are live state indicators, not buttons -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/debug_readonly_notice"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Hz badge -->
+            <TextView
+                android:id="@+id/tvReportRate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="0 Hz"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="16dp"
+                tools:ignore="HardcodedText" />
+
+            <!-- 2 columns -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:baselineAligned="false">
+
+                <!-- LEFT column: BUTTONS -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="16dp"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_face_buttons" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
+                        <TextView android:id="@+id/btnA" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_a" />
+                        <TextView android:id="@+id/btnB" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_b" />
+                        <TextView android:id="@+id/btnX" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_x" />
+                        <TextView android:id="@+id/btnY" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_y" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_bumpers_system" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
+                        <TextView android:id="@+id/btnLB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_lb" />
+                        <TextView android:id="@+id/btnRB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_rb" />
+                        <TextView android:id="@+id/btnSelect" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_select" />
+                        <TextView android:id="@+id/btnSteam"  style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_steam_alt_glyph" />
+                        <TextView android:id="@+id/btnStart"  style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_start_text" />
+                        <TextView android:id="@+id/btnQA"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_qa" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_dpad" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
+                        <TextView android:id="@+id/btnDU" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_dpad_up" />
+                        <TextView android:id="@+id/btnDD" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_dpad_down" />
+                        <TextView android:id="@+id/btnDL" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_dpad_left" />
+                        <TextView android:id="@+id/btnDR" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_dpad_right" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_sticks_pads_compact" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
+                        <TextView android:id="@+id/btnLS" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_l3" />
+                        <TextView android:id="@+id/btnRS" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_r3" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_grips_back" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
+                        <TextView android:id="@+id/btnLGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_lgrip" />
+                        <TextView android:id="@+id/btnRGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_rgrip" />
+                        <TextView android:id="@+id/btnL4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_l4" />
+                        <TextView android:id="@+id/btnL5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_l5" />
+                        <TextView android:id="@+id/btnR4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_r4" />
+                        <TextView android:id="@+id/btnR5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_r5" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_triggers_header" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
+                            <TextView android:text="@string/debug_lt" style="@style/AxisLabel" />
+                            <ProgressBar android:id="@+id/pbLT" style="?android:attr/progressBarStyleHorizontal"
+                                android:layout_width="match_parent" android:layout_height="12dp"
+                                android:max="255" android:progressTint="?attr/colorPrimary" />
+                            <TextView android:id="@+id/tvLT" style="@style/AxisVal" android:text="0" tools:ignore="HardcodedText" />
+                        </LinearLayout>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
+                            <TextView android:text="@string/debug_rt" style="@style/AxisLabel" />
+                            <ProgressBar android:id="@+id/pbRT" style="?android:attr/progressBarStyleHorizontal"
+                                android:layout_width="match_parent" android:layout_height="12dp"
+                                android:max="255" android:progressTint="?attr/colorPrimary" />
+                            <TextView android:id="@+id/tvRT" style="@style/AxisVal" android:text="0" tools:ignore="HardcodedText" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- RIGHT column: AXES + RAW HEX -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_left_stick" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:id="@+id/tvLSX" style="@style/AxisValFull" android:text="X:     0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvLSY" style="@style/AxisValFull" android:text="Y:     0" tools:ignore="HardcodedText" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_right_stick" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:id="@+id/tvRSX" style="@style/AxisValFull" android:text="X:     0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvRSY" style="@style/AxisValFull" android:text="Y:     0" tools:ignore="HardcodedText" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_left_trackpad" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:id="@+id/tvLPX" style="@style/AxisValFull" android:text="X:     0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvLPY" style="@style/AxisValFull" android:text="Y:     0" tools:ignore="HardcodedText" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_right_trackpad" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:id="@+id/tvRPX" style="@style/AxisValFull" android:text="X:     0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvRPY" style="@style/AxisValFull" android:text="Y:     0" tools:ignore="HardcodedText" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_imu_quaternion" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginBottom="16dp">
+                        <TextView android:id="@+id/tvQW" style="@style/AxisValFull" android:text="qW:    0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvQX" style="@style/AxisValFull" android:text="qX:    0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvQY" style="@style/AxisValFull" android:text="qY:    0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvQZ" style="@style/AxisValFull" android:text="qZ:    0" tools:ignore="HardcodedText" />
+                    </LinearLayout>
+
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_raw_report" />
+                    <TextView
+                        android:id="@+id/tvRawHex"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="10sp"
+                        android:fontFamily="monospace"
+                        android:lineSpacingExtra="2dp"
+                        tools:ignore="HardcodedText" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

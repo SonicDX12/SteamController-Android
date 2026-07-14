@@ -18,10 +18,11 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorSurface"
-            app:title="HID Debug"
+            app:title="@string/debug_title"
             app:titleTextColor="?attr/colorPrimary"
             app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
-            app:navigationIconTint="?attr/colorPrimary" />
+            app:navigationIconTint="?attr/colorPrimary"
+            app:menu="@menu/menu_debug" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
@@ -34,6 +35,15 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="24dp">
+
+            <!-- Read-only notice — these chips are live state indicators, not buttons -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/debug_readonly_notice"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:layout_marginBottom="12dp" />
 
             <!-- Hz badge -->
             <TextView
@@ -63,59 +73,59 @@
                     android:layout_marginEnd="16dp"
                     android:orientation="vertical">
 
-                    <TextView style="@style/SectionHeader" android:text="FACE BUTTONS" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_face_buttons" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
-                        <TextView android:id="@+id/btnA" style="@style/BtnChip" android:layout_margin="4dp" android:text="A" />
-                        <TextView android:id="@+id/btnB" style="@style/BtnChip" android:layout_margin="4dp" android:text="B" />
-                        <TextView android:id="@+id/btnX" style="@style/BtnChip" android:layout_margin="4dp" android:text="X" />
-                        <TextView android:id="@+id/btnY" style="@style/BtnChip" android:layout_margin="4dp" android:text="Y" />
+                        <TextView android:id="@+id/btnA" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_a" />
+                        <TextView android:id="@+id/btnB" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_b" />
+                        <TextView android:id="@+id/btnX" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_x" />
+                        <TextView android:id="@+id/btnY" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_y" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="BUMPERS / SYSTEM" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_bumpers_system" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
-                        <TextView android:id="@+id/btnLB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="LB" />
-                        <TextView android:id="@+id/btnRB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="RB" />
-                        <TextView android:id="@+id/btnSelect" style="@style/BtnChip" android:layout_margin="4dp" android:text="SEL" />
-                        <TextView android:id="@+id/btnSteam"  style="@style/BtnChip" android:layout_margin="4dp" android:text="☰" />
-                        <TextView android:id="@+id/btnStart"  style="@style/BtnChip" android:layout_margin="4dp" android:text="START" />
-                        <TextView android:id="@+id/btnQA"     style="@style/BtnChip" android:layout_margin="4dp" android:text="QA" />
+                        <TextView android:id="@+id/btnLB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_lb" />
+                        <TextView android:id="@+id/btnRB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_rb" />
+                        <TextView android:id="@+id/btnSelect" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_select" />
+                        <TextView android:id="@+id/btnSteam"  style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_steam_alt_glyph" />
+                        <TextView android:id="@+id/btnStart"  style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_start_text" />
+                        <TextView android:id="@+id/btnQA"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_qa" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="D-PAD" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_dpad" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
-                        <TextView android:id="@+id/btnDU" style="@style/BtnChip" android:layout_margin="4dp" android:text="▲" />
-                        <TextView android:id="@+id/btnDD" style="@style/BtnChip" android:layout_margin="4dp" android:text="▼" />
-                        <TextView android:id="@+id/btnDL" style="@style/BtnChip" android:layout_margin="4dp" android:text="◀" />
-                        <TextView android:id="@+id/btnDR" style="@style/BtnChip" android:layout_margin="4dp" android:text="▶" />
+                        <TextView android:id="@+id/btnDU" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_dpad_up" />
+                        <TextView android:id="@+id/btnDD" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_dpad_down" />
+                        <TextView android:id="@+id/btnDL" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_dpad_left" />
+                        <TextView android:id="@+id/btnDR" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_dpad_right" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="STICKS / PADS" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_sticks_pads_compact" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
-                        <TextView android:id="@+id/btnLS" style="@style/BtnChip" android:layout_margin="4dp" android:text="L3" />
-                        <TextView android:id="@+id/btnRS" style="@style/BtnChip" android:layout_margin="4dp" android:text="R3" />
+                        <TextView android:id="@+id/btnLS" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_l3" />
+                        <TextView android:id="@+id/btnRS" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_r3" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="GRIPS / BACK" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_grips_back" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="12dp">
-                        <TextView android:id="@+id/btnLGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="LGrip" />
-                        <TextView android:id="@+id/btnRGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="RGrip" />
-                        <TextView android:id="@+id/btnL4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="L4" />
-                        <TextView android:id="@+id/btnL5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="L5" />
-                        <TextView android:id="@+id/btnR4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="R4" />
-                        <TextView android:id="@+id/btnR5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="R5" />
+                        <TextView android:id="@+id/btnLGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_lgrip" />
+                        <TextView android:id="@+id/btnRGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_rgrip" />
+                        <TextView android:id="@+id/btnL4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_l4" />
+                        <TextView android:id="@+id/btnL5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_l5" />
+                        <TextView android:id="@+id/btnR4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_r4" />
+                        <TextView android:id="@+id/btnR5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_r5" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="TRIGGERS (0–255)" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_triggers_header" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:layout_marginBottom="8dp">
                         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                             android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
-                            <TextView android:text="LT" style="@style/AxisLabel" tools:ignore="HardcodedText" />
+                            <TextView android:text="@string/debug_lt" style="@style/AxisLabel" />
                             <ProgressBar android:id="@+id/pbLT" style="?android:attr/progressBarStyleHorizontal"
                                 android:layout_width="match_parent" android:layout_height="12dp"
                                 android:max="255" android:progressTint="?attr/colorPrimary" />
@@ -123,7 +133,7 @@
                         </LinearLayout>
                         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                             android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
-                            <TextView android:text="RT" style="@style/AxisLabel" tools:ignore="HardcodedText" />
+                            <TextView android:text="@string/debug_rt" style="@style/AxisLabel" />
                             <ProgressBar android:id="@+id/pbRT" style="?android:attr/progressBarStyleHorizontal"
                                 android:layout_width="match_parent" android:layout_height="12dp"
                                 android:max="255" android:progressTint="?attr/colorPrimary" />
@@ -140,35 +150,35 @@
                     android:layout_marginStart="16dp"
                     android:orientation="vertical">
 
-                    <TextView style="@style/SectionHeader" android:text="LEFT STICK" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_left_stick" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:layout_marginBottom="8dp">
                         <TextView android:id="@+id/tvLSX" style="@style/AxisValFull" android:text="X:     0" tools:ignore="HardcodedText" />
                         <TextView android:id="@+id/tvLSY" style="@style/AxisValFull" android:text="Y:     0" tools:ignore="HardcodedText" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="RIGHT STICK" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_right_stick" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:layout_marginBottom="8dp">
                         <TextView android:id="@+id/tvRSX" style="@style/AxisValFull" android:text="X:     0" tools:ignore="HardcodedText" />
                         <TextView android:id="@+id/tvRSY" style="@style/AxisValFull" android:text="Y:     0" tools:ignore="HardcodedText" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="LEFT TRACKPAD" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_left_trackpad" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:layout_marginBottom="8dp">
                         <TextView android:id="@+id/tvLPX" style="@style/AxisValFull" android:text="X:     0" tools:ignore="HardcodedText" />
                         <TextView android:id="@+id/tvLPY" style="@style/AxisValFull" android:text="Y:     0" tools:ignore="HardcodedText" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="RIGHT TRACKPAD" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_right_trackpad" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:layout_marginBottom="8dp">
                         <TextView android:id="@+id/tvRPX" style="@style/AxisValFull" android:text="X:     0" tools:ignore="HardcodedText" />
                         <TextView android:id="@+id/tvRPY" style="@style/AxisValFull" android:text="Y:     0" tools:ignore="HardcodedText" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="IMU QUATERNION" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_imu_quaternion" />
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:layout_marginBottom="16dp">
                         <TextView android:id="@+id/tvQW" style="@style/AxisValFull" android:text="qW:    0" tools:ignore="HardcodedText" />
@@ -177,7 +187,7 @@
                         <TextView android:id="@+id/tvQZ" style="@style/AxisValFull" android:text="qZ:    0" tools:ignore="HardcodedText" />
                     </LinearLayout>
 
-                    <TextView style="@style/SectionHeader" android:text="RAW REPORT (hex)" tools:ignore="HardcodedText" />
+                    <TextView style="@style/SectionHeader" android:text="@string/debug_raw_report" />
                     <TextView
                         android:id="@+id/tvRawHex"
                         android:layout_width="match_parent"
@@ -186,7 +196,8 @@
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="10sp"
                         android:fontFamily="monospace"
-                        android:lineSpacingExtra="2dp" />
+                        android:lineSpacingExtra="2dp"
+                        tools:ignore="HardcodedText" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

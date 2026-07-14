@@ -6,12 +6,17 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
 import com.steamcontroller.android.Prefs
+import com.steamcontroller.android.input.DEFAULT_MOUSE_MAPPING
+import com.steamcontroller.android.input.MOUSE_LEFT_PAD_CLICK_BIT
+import com.steamcontroller.android.input.MOUSE_MODE_FIXED_DPAD
+import com.steamcontroller.android.input.MouseTarget
 import com.steamcontroller.android.input.SteamButton
 import com.steamcontroller.android.input.StickCalibration
 import com.steamcontroller.android.input.SystemActions
 import com.steamcontroller.android.input.XboxTarget
 import com.steamcontroller.android.parser.Buttons
 import com.steamcontroller.android.parser.SteamControllerState
+import kotlin.math.abs
 import rikka.shizuku.Shizuku
 
 // High-level Kotlin API for the virtual Xbox 360 gamepad.
@@ -19,6 +24,13 @@ import rikka.shizuku.Shizuku
 class UInputGamepad(private val context: Context, initialProfile: GamepadProfile) {
 
     private val TAG = "UInputGamepad"
+
+    companion object {
+        // Sentinel meaning "the setting had no value before we touched it" (settings get
+        // returns "null" as a string in that case) — restored by deleting the key, not by
+        // writing the literal string "null".
+        private const val SHOW_IME_UNSET_SENTINEL = "__unset__"
+    }
     private var service: IUInputService? = null
     private var bound = false
     @Volatile private var profile: GamepadProfile = initialProfile
@@ -48,6 +60,18 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
     // raw button bits so we can fire on 0 → 1 transitions only (not while held).
     private var lastFrameButtons: Int = 0
 
+    // Mouse-mode state: previous trackpad position (for delta) and sensitivity cache.
+    private var lastRightPadX: Int = 0
+    private var lastRightPadY: Int = 0
+    private var rightPadHadContact: Boolean = false
+    // Left trackpad → scroll wheel state (used in gamepad sidecar mode).
+    private var lastLeftPadY: Int = 0
+    private var leftPadHadContact: Boolean = false
+    @Volatile private var cachedMouseSensitivity: Float = 1f
+    @Volatile private var cachedTrackpadAsMouse: Boolean = true
+    // Trigger / pad scroll: accumulator so we can convert continuous 0..32767 deltas into discrete wheel ticks
+    private var scrollAccumulator: Int = 0
+
     private val args = Shizuku.UserServiceArgs(
         ComponentName(context.packageName, UInputService::class.java.name)
     )
@@ -70,6 +94,7 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
                         val ok = svc.createGamepad(profile.id)
                         deviceReady = ok
                         Log.i(TAG, "createGamepad(${profile.displayName}) → $ok")
+                        if (ok) applyShowImeOverride(svc)
                     } else {
                         Log.e(TAG, "Cannot open /dev/uinput from shell UID — SELinux likely blocks it on this device")
                     }
@@ -95,10 +120,50 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
     fun unbind() {
         if (!bound) return
         stopRumbleThread()
+        try { service?.let { restoreShowImeOverride(it) } } catch (_: Throwable) {}
         try { service?.destroy() } catch (_: Throwable) {}
         Shizuku.unbindUserService(args, connection, true)
         bound = false
         service = null
+    }
+
+    // Android's InputManager treats a paired/connected HID keyboard-classified device as a
+    // hardware keyboard and suppresses the on-screen keyboard for every text field, system-wide,
+    // for as long as it's attached. The Steam Controller's own USB/BT HID interfaces can trigger
+    // this classification independently of our uinput device (e.g. a legacy "boot keyboard" HID
+    // interface used for lizard mode, auto-bound by the kernel/Bluetooth stack outside our app's
+    // control). Forcing Settings.Secure.show_ime_with_hard_keyboard=1 via the shell UID makes
+    // Android show the soft keyboard regardless. Reverted on unbind() so a real Bluetooth
+    // keyboard paired later behaves normally.
+    private fun applyShowImeOverride(svc: IUInputService) {
+        try {
+            if (Prefs.getSavedShowImeHardKeyboard(context) == null) {
+                val current = try {
+                    svc.runShellCommandForOutput(arrayOf("settings", "get", "secure", "show_ime_with_hard_keyboard"))
+                } catch (_: Throwable) { null }
+                val toSave = current?.takeIf { it.isNotBlank() && it != "null" } ?: SHOW_IME_UNSET_SENTINEL
+                Prefs.setSavedShowImeHardKeyboard(context, toSave)
+            }
+            svc.runShellCommand(arrayOf("settings", "put", "secure", "show_ime_with_hard_keyboard", "1"))
+            Log.i(TAG, "show_ime_with_hard_keyboard forced on")
+        } catch (t: Throwable) {
+            Log.w(TAG, "applyShowImeOverride failed: ${t.message}")
+        }
+    }
+
+    private fun restoreShowImeOverride(svc: IUInputService) {
+        try {
+            val saved = Prefs.getSavedShowImeHardKeyboard(context) ?: return
+            if (saved == SHOW_IME_UNSET_SENTINEL) {
+                svc.runShellCommand(arrayOf("settings", "delete", "secure", "show_ime_with_hard_keyboard"))
+            } else {
+                svc.runShellCommand(arrayOf("settings", "put", "secure", "show_ime_with_hard_keyboard", saved))
+            }
+            Prefs.clearSavedShowImeHardKeyboard(context)
+            Log.i(TAG, "show_ime_with_hard_keyboard restored to '$saved'")
+        } catch (t: Throwable) {
+            Log.w(TAG, "restoreShowImeOverride failed: ${t.message}")
+        }
     }
 
     /**
@@ -165,22 +230,40 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
             cachedLeftCal  = Prefs.getLeftCalibration(context)
             cachedRightCal = Prefs.getRightCalibration(context)
             cachedMapping  = Prefs.getAllMappings(context)
+            cachedMouseSensitivity = Prefs.getMouseSensitivity(context)
+            cachedTrackpadAsMouse  = Prefs.getTrackpadAsMouseInGamepad(context)
             lastCalRefresh = now
         }
+
+        if (profile.isMouseMode) {
+            pushMouseFrame(svc, state)
+            return
+        }
+
         val leftCal  = cachedLeftCal
         val rightCal = cachedRightCal
 
         // Apply the user-configurable button mapping.
-        // target.mask > 0 → regular Xbox button bit (OR into the bitmask).
-        // target.mask < 0 → special action (screenshot etc.), edge-triggered on press.
+        //   target.mask > 0       → regular Xbox button bit (OR into the bitmask).
+        //   target.keyBit >= 0    → sidecar keyboard key (OR into the sidecar key bitmask).
+        //   target.triggerSide!=0 → force LT (1) / RT (2) axis to max.
+        //   target.mask < 0       → special action, edge-triggered on press.
         var xboxButtons = 0
+        var sidecarMappedKeys = 0
+        var ltOverride = 0
+        var rtOverride = 0
         for ((source, target) in cachedMapping) {
             val pressed = state.isButtonPressed(source.mask)
             when {
                 target.mask > 0 && pressed -> {
                     xboxButtons = xboxButtons or target.mask
                 }
-                target.mask < 0 -> {
+                target.keyBit >= 0 && pressed -> {
+                    sidecarMappedKeys = sidecarMappedKeys or (1 shl target.keyBit)
+                }
+                target.triggerSide == 1 && pressed -> { ltOverride = 255 }
+                target.triggerSide == 2 && pressed -> { rtOverride = 255 }
+                target.mask < 0 && target.keyBit < 0 && target.triggerSide == 0 -> {
                     val wasPressed = (lastFrameButtons and source.mask) != 0
                     if (pressed && !wasPressed) handleSpecialAction(target)
                 }
@@ -189,9 +272,12 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
         lastFrameButtons = state.buttons
 
         // SC2026 sticks are already in Int16 range — direct passthrough
-        // SC2026 triggers are 0-32767 → scale down to Xbox 0-255
-        val lt = (state.leftTrigger  * 255 / 32767).coerceIn(0, 255)
-        val rt = (state.rightTrigger * 255 / 32767).coerceIn(0, 255)
+        // SC2026 triggers are 0-32767 → scale down to Xbox 0-255.
+        // ltOverride/rtOverride bump the axis to max when a remapped source is pressed.
+        val ltAnalog = (state.leftTrigger  * 255 / 32767).coerceIn(0, 255)
+        val rtAnalog = (state.rightTrigger * 255 / 32767).coerceIn(0, 255)
+        val lt = maxOf(ltAnalog, ltOverride)
+        val rt = maxOf(rtAnalog, rtOverride)
 
         val dpadX = when {
             state.isButtonPressed(Buttons.DPAD_RIGHT) ->  1
@@ -220,6 +306,137 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
             )
         } catch (t: Throwable) {
             Log.e(TAG, "sendFrame IPC failed: ${t.message}")
+        }
+
+        // Sidecar mouse + keyboard while a gamepad profile is active.
+        // - cachedTrackpadAsMouse gates trackpad-driven cursor + scroll
+        // - mapped keyboard keys (sidecarMappedKeys) always flow through, even when
+        //   the trackpad-as-mouse toggle is off, so back-paddle keyboard mappings work.
+        pushSidecarFrame(svc, state, sidecarMappedKeys)
+    }
+
+    /**
+     * Sidecar frame for gamepad mode: trackpad-as-mouse + keyboard targets for
+     * back paddles. Skips emitting anything when nothing happens this frame —
+     * keeping the mouse fd idle is critical so Android IME focus isn't stolen by
+     * a phantom cursor (same rationale as in Desktop mode).
+     */
+    private fun pushSidecarFrame(svc: IUInputService, state: SteamControllerState, mappedKeys: Int) {
+        val (relX, relY, scrollTicks) = if (cachedTrackpadAsMouse) {
+            val (rx, ry) = computeRightPadDelta(state)
+            Triple(rx, ry, computeLeftPadScroll(state))
+        } else {
+            // Still reset accumulators / contact flags so a re-enable mid-session
+            // doesn't trigger a phantom delta on first touch.
+            rightPadHadContact = false
+            leftPadHadContact = false
+            scrollAccumulator = 0
+            Triple(0, 0, 0)
+        }
+
+        var keys = mappedKeys
+        // Left trackpad click → left mouse click (only active when sidecar mouse is on).
+        if (cachedTrackpadAsMouse && state.isButtonPressed(MOUSE_LEFT_PAD_CLICK_BIT)) {
+            keys = keys or (1 shl MouseTarget.BTN_LEFT.bit)
+        }
+        if (relX == 0 && relY == 0 && scrollTicks == 0 && keys == 0) return
+        try {
+            svc.sendMouseFrame(relX, relY, scrollTicks, keys)
+        } catch (t: Throwable) {
+            Log.e(TAG, "sendMouseFrame (sidecar) IPC failed: ${t.message}")
+        }
+    }
+
+    /** Right trackpad delta (in mouse-cursor units). Resets cleanly on lift-off. */
+    private fun computeRightPadDelta(state: SteamControllerState): Pair<Int, Int> {
+        val touching = state.isButtonPressed(Buttons.TP_RT)
+        if (!touching) {
+            rightPadHadContact = false
+            return 0 to 0
+        }
+        val curX = state.rightPadX.toInt()
+        val curY = state.rightPadY.toInt()
+        var relX = 0
+        var relY = 0
+        if (rightPadHadContact) {
+            val sens = cachedMouseSensitivity
+            relX = ((curX - lastRightPadX) / 128f * sens).toInt()
+            // SC2026 Y up positive → mouse Y down positive: invert
+            relY = (-(curY - lastRightPadY) / 128f * sens).toInt()
+        }
+        lastRightPadX = curX
+        lastRightPadY = curY
+        rightPadHadContact = true
+        return relX to relY
+    }
+
+    /** Left trackpad vertical → wheel ticks. One tick per ~1000 accumulator units. */
+    private fun computeLeftPadScroll(state: SteamControllerState): Int {
+        val touching = state.isButtonPressed(Buttons.TP_LT)
+        if (!touching) {
+            leftPadHadContact = false
+            scrollAccumulator = 0
+            return 0
+        }
+        val curY = state.leftPadY.toInt()
+        if (leftPadHadContact) {
+            // Y positive = up on SC2026; scroll wheel positive = up → keep sign.
+            scrollAccumulator += (curY - lastLeftPadY) / 8
+        }
+        lastLeftPadY = curY
+        leftPadHadContact = true
+        if (abs(scrollAccumulator) < 1000) return 0
+        val ticks = scrollAccumulator / 1000
+        scrollAccumulator -= ticks * 1000
+        return ticks
+    }
+
+    /**
+     * Desktop / mouse mode: right trackpad → cursor delta, triggers → scroll wheel,
+     * face/system buttons → mapped keys, DPAD → arrow keys, left pad click → right mouse.
+     * Special actions (e.g. SCREENSHOT) still fire via the gamepad mapping.
+     */
+    private fun pushMouseFrame(svc: IUInputService, state: SteamControllerState) {
+        // Right trackpad → cursor delta; left trackpad vertical → scroll wheel.
+        // Same helpers as the gamepad sidecar mode so the gesture is identical.
+        val (relX, relY)   = computeRightPadDelta(state)
+        val scrollTicks    = computeLeftPadScroll(state)
+
+        // ── Key/mouse-button bitmask ─────────────────────────────────────────
+        var keys = 0
+
+        // Customisable face/system mapping (uses MOUSE-mode defaults, no Prefs persistence in V1.1).
+        for ((source, target) in DEFAULT_MOUSE_MAPPING) {
+            if (target.bit >= 0 && state.isButtonPressed(source.mask)) {
+                keys = keys or (1 shl target.bit)
+            }
+        }
+
+        // Fixed DPAD → arrow keys
+        for ((mask, target) in MOUSE_MODE_FIXED_DPAD) {
+            if (state.isButtonPressed(mask)) keys = keys or (1 shl target.bit)
+        }
+
+        // Left trackpad click → right mouse click
+        if (state.isButtonPressed(MOUSE_LEFT_PAD_CLICK_BIT)) {
+            keys = keys or (1 shl MouseTarget.BTN_RIGHT.bit)
+        }
+
+        // Special actions (screenshot) still honoured via the gamepad mapping table —
+        // keeps QA → screenshot working even in mouse mode.
+        for ((source, target) in cachedMapping) {
+            if (target.mask < 0) {
+                val pressed = state.isButtonPressed(source.mask)
+                val wasPressed = (lastFrameButtons and source.mask) != 0
+                if (pressed && !wasPressed) handleSpecialAction(target)
+            }
+        }
+        lastFrameButtons = state.buttons
+
+        try {
+            svc.sendMouseFrame(relX, relY, scrollTicks, keys)
+        } catch (t: Throwable) {
+            Log.e(TAG, "sendMouseFrame IPC failed: ${t.message}")
         }
     }
 }

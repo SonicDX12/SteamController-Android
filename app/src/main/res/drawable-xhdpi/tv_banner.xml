@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV banner: 320 x 180 dp. Logo only — the launcher overlays the app label. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#1B2838"
+        android:pathData="M0,0h320v180h-320z" />
+
+    <!-- Subtle diagonal accent -->
+    <path
+        android:fillColor="#2A475E"
+        android:pathData="M0,150 L320,110 L320,180 L0,180 Z" />
+
+    <!-- Centered logo (ring + star), same shape as launcher icon -->
+    <path
+        android:fillColor="#66C0F4"
+        android:pathData="M160,58 C142.3,58 128,72.3 128,90 C128,107.7 142.3,122 160,122 C177.7,122 192,107.7 192,90 C192,72.3 177.7,58 160,58z M160,68 C172.1,68 182,77.9 182,90 C182,102.1 172.1,112 160,112 C147.9,112 138,102.1 138,90 C138,77.9 147.9,68 160,68z" />
+    <path
+        android:fillColor="#66C0F4"
+        android:pathData="M160,78 L163.7,85.5 L172,86.4 L165.9,92.3 L167.3,100.5 L160,96.6 L152.7,100.5 L154.1,92.3 L148,86.4 L156.3,85.5 Z" />
+</vector>
