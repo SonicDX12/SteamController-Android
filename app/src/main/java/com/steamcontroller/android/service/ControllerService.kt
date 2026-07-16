@@ -23,6 +23,7 @@ import com.steamcontroller.android.uinput.UInputGamepad
 import com.steamcontroller.android.usb.HidReportReader
 import com.steamcontroller.android.usb.SteamHidProtocol
 import com.steamcontroller.android.usb.UsbConnectionManager
+import com.steamcontroller.android.service.UsageStatsHelper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +41,7 @@ class ControllerService : Service() {
         const val ACTION_STOP = "com.steamcontroller.android.STOP"
         const val ACTION_NEXT_PROFILE = "com.steamcontroller.android.NEXT_PROFILE"
         const val ACTION_TEST_RUMBLE = "com.steamcontroller.android.TEST_RUMBLE"
+        private const val TEST_RUMBLE_DURATION_MS = 5000L
 
         // Observed by DebugActivity / MainActivity for live display
         private val _stateFlow = MutableStateFlow<SteamControllerState?>(null)
@@ -78,6 +80,7 @@ class ControllerService : Service() {
     private val INJECTABLE_MASK =
         Buttons.A or Buttons.B or Buttons.X or Buttons.Y or
         Buttons.LB or Buttons.RB or
+        Buttons.LT_FULL or Buttons.RT_FULL or
         Buttons.MENU or Buttons.VIEW or Buttons.STEAM or Buttons.QUICK_ACCESS or
         Buttons.LS or Buttons.RS or
         Buttons.L4 or Buttons.L5 or Buttons.R4 or Buttons.R5 or
@@ -104,6 +107,111 @@ class ControllerService : Service() {
         scope.launch {
             _batteryFlow.collect { refreshNotification() }
         }
+
+        startForegroundAppMonitor()
+    }
+
+    // ─── Foreground-app auto-switch (V1.2 Phase 2b) ────────────────────────────
+    private var foregroundAppMonitorJob: Job? = null
+    private var lastForegroundPackage: String? = null
+
+    /**
+     * Poll UsageStatsManager every 1.5s for the focused app. On change, look up
+     * a matching named-profile binding and live-switch the gamepad profile.
+     * Silently inert if the user hasn't granted PACKAGE_USAGE_STATS.
+     */
+    private fun startForegroundAppMonitor() {
+        foregroundAppMonitorJob?.cancel()
+        foregroundAppMonitorJob = scope.launch {
+            while (isActive) {
+                try { tickForegroundAppMonitor() } catch (t: Throwable) {
+                    Log.w(TAG, "Foreground monitor tick failed: ${t.message}")
+                }
+                delay(1500)
+            }
+        }
+    }
+
+    private var loggedNoUsagePerm = false
+
+    private fun tickForegroundAppMonitor() {
+        if (!UsageStatsHelper.hasPermission(this)) {
+            if (!loggedNoUsagePerm) {
+                Log.w(TAG, "Auto-switch inert: PACKAGE_USAGE_STATS not granted")
+                loggedNoUsagePerm = true
+            }
+            return
+        }
+        loggedNoUsagePerm = false
+
+        val current = UsageStatsHelper.getCurrentForegroundApp(this) ?: return
+        if (current == lastForegroundPackage) return
+        Log.v(TAG, "Foreground changed: $lastForegroundPackage → $current")
+        lastForegroundPackage = current
+        // Ignore self — opening our own UI shouldn't trigger anything.
+        if (current == packageName) return
+
+        val bound = Prefs.listNamedProfiles(this)
+            .firstOrNull { current in it.boundPackages }
+        if (bound == null) {
+            Log.v(TAG, "  no profile bound to $current")
+            return
+        }
+
+        // Gate: skip only if BOTH the active named-profile id AND the live emulated
+        // gamepad already match the binding. Without the live-profile check we'd skip
+        // when the user has manually picked a different gamepad variant via the radios
+        // (which doesn't clear activeNamedProfileId).
+        val liveProfileMatches = Prefs.getProfile(this).id == bound.profileId
+        val activeMatches = Prefs.getActiveNamedProfileId(this) == bound.id
+        if (activeMatches && liveProfileMatches) {
+            Log.v(TAG, "  '${bound.name}' already applied — skipping")
+            return
+        }
+
+        Log.i(TAG, "Auto-switch → '${bound.name}' (foreground=$current, activeMatches=$activeMatches, liveMatches=$liveProfileMatches)")
+        Prefs.applyNamedProfile(this, bound)
+        announceProfileLoaded(bound.name)
+
+        // Live-swap the gamepad profile (skip if not in uinput mode).
+        if (mode == InjectionMode.UINPUT && !profileSwitchInFlight) {
+            profileSwitchInFlight = true
+            scope.launch {
+                try {
+                    val gp = com.steamcontroller.android.uinput.GamepadProfile.fromId(bound.profileId)
+                    uinput.switchProfile(gp)
+                    _profileFlow.value = bound.profileId
+                    refreshNotification()
+                } finally {
+                    profileSwitchInFlight = false
+                }
+            }
+        } else {
+            _profileFlow.value = bound.profileId
+            refreshNotification()
+        }
+    }
+
+    /**
+     * Surface the auto-switch to the user via:
+     *  1. A LENGTH_LONG Toast on the main thread (cheapest signal, shows over the
+     *     launching app — might be missed if the user is head-down, hence #2).
+     *  2. The foreground-service notification text gets the profile name appended
+     *     (persistent until the next swap), so the user can always pull the shade
+     *     to confirm which preset is live.
+     */
+    private fun announceProfileLoaded(profileName: String) {
+        Log.i(TAG, "announceProfileLoaded: $profileName")
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        handler.post {
+            android.widget.Toast.makeText(
+                applicationContext,
+                "Game Profile loaded: $profileName",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
+        // Notification refresh happens via refreshNotification() in the caller
+        // after _profileFlow.value is updated.
     }
 
     private var lastRumbleStrong = -1
@@ -111,8 +219,8 @@ class ControllerService : Service() {
     private var lastRumbleSentAt = 0L
 
     /**
-     * Manual rumble test: pulse both motors at full strength for 500ms, then stop.
-     * Triggered by the "Test rumble" button in CalibrationActivity.
+     * Manual rumble test: pulse both motors at full strength for TEST_RUMBLE_DURATION_MS,
+     * then stop. Triggered by the "Test rumble" button in CalibrationActivity.
      */
     private fun testRumble() {
         Log.i(TAG, "Test rumble requested")
@@ -120,7 +228,7 @@ class ControllerService : Service() {
         lastRumbleSentAt = 0
         forwardRumble(0xFFFF, 0xFFFF)
         scope.launch {
-            delay(500)
+            delay(TEST_RUMBLE_DURATION_MS)
             lastRumbleSentAt = 0
             forwardRumble(0, 0)
         }
@@ -285,10 +393,15 @@ class ControllerService : Service() {
     private fun onHidFrame(state: SteamControllerState, raw: ByteArray) {
         _stateFlow.value = state
         _rawReportFlow.value = raw
-        // Battery only ships in the full state report; null when unknown
-        state.batteryPercent?.let { pct ->
-            if (_batteryFlow.value != pct) _batteryFlow.value = pct
+
+        // Dedicated battery/charge report (id 0x43) — works on both USB and BT,
+        // percent is already 0-100. Sole battery source: bytes 44-45 of the 0x45 state
+        // report were assumed to be a static battery field but turned out to be live,
+        // fast-changing data (empirically: flickers 0%/99% on USB), so that guess isn't used.
+        SteamReportParser.parseBatteryStatus(raw)?.let { status ->
+            if (_batteryFlow.value != status.percent) _batteryFlow.value = status.percent
         }
+
         if (raw.isNotEmpty() && (raw[0].toInt() and 0xFF) == 0x45) {
             handleState(state)
         }
@@ -339,25 +452,45 @@ class ControllerService : Service() {
      * Triggered by the notification action: cycle to the next profile (Xbox360 → XboxOne → DS4 → DualSense → ...).
      * Only meaningful in uinput mode; in fallback inject mode the profile is ignored.
      */
+    // Guards against re-entrant taps on the "Switch profile" notification action while
+    // a previous switch is still tearing down / recreating uinput devices.
+    @Volatile private var profileSwitchInFlight = false
+
     private fun cycleProfile() {
+        if (profileSwitchInFlight) {
+            Log.w(TAG, "Cycle profile ignored: a switch is already in progress")
+            return
+        }
+        profileSwitchInFlight = true
+
         val profiles = com.steamcontroller.android.uinput.GamepadProfile.values()
         val current = Prefs.getProfile(this)
         val next = profiles[(current.ordinal + 1) % profiles.size]
         Prefs.setProfile(this, next)
         Log.i(TAG, "Cycle profile: ${current.displayName} → ${next.displayName}")
 
-        if (mode == InjectionMode.UINPUT) {
-            val ok = uinput.switchProfile(next)
-            if (!ok) Log.w(TAG, "switchProfile failed; the gamepad may need a service restart")
-        }
-        // Reset baseline state so any buttons "held" during the swap don't get injected
+        // Reset baseline state immediately so any buttons "held" during the swap
+        // don't get injected via the now-defunct device.
         confirmedState = null
         pendingButtons = 0
         pendingFrames = 0
 
-        refreshNotification()
-        // Tell MainActivity about the new profile so the dropdown and "Mode:" label update.
-        _profileFlow.value = next.id
+        // Run the actual device teardown/recreate off the service main thread —
+        // it's a blocking binder + native ioctl pair that can take 100ms+.
+        // Doing it on the main thread risks ANR / lost broadcast intents and was
+        // the most likely cause of the "I can't change profile until I reboot" bug.
+        scope.launch {
+            try {
+                if (mode == InjectionMode.UINPUT) {
+                    val ok = uinput.switchProfile(next)
+                    if (!ok) Log.w(TAG, "switchProfile failed; the gamepad may need a service restart")
+                }
+                _profileFlow.value = next.id
+                refreshNotification()
+            } finally {
+                profileSwitchInFlight = false
+            }
+        }
     }
 
     private fun handleState(state: SteamControllerState) {
@@ -390,9 +523,16 @@ class ControllerService : Service() {
 
         when (mode) {
             InjectionMode.UINPUT -> {
-                // Combine confirmed buttons with current raw axes — uinput frame is atomic
-                val merged = state.copy(buttons = confirmedState!!.buttons)
-                uinput.pushFrame(merged)
+                // Combine confirmed buttons with current raw axes — uinput frame is atomic.
+                // Desktop / mouse mode bypasses the gamepad debounce: the trackpad touch flag
+                // (TP_RT) is capacitive and excluded from the debounce, so using confirmed
+                // buttons would freeze the cursor whenever the touch flag couldn't propagate.
+                val frameToSend = if (Prefs.getProfile(this).isMouseMode) {
+                    state
+                } else {
+                    state.copy(buttons = confirmedState!!.buttons)
+                }
+                uinput.pushFrame(frameToSend)
             }
             InjectionMode.SHIZUKU_INJECT -> {
                 // Axes every frame for smoothness, with live-reloaded calibration
@@ -419,6 +559,10 @@ class ControllerService : Service() {
         usbManager.disconnect()
         try { btManager.disconnect() } catch (_: Throwable) {}
         _modeFlow.value = InjectionMode.NONE
+        // Reset state + battery so MainActivity's "is the controller actually here?"
+        // observer flips back to disconnected on stop.
+        _stateFlow.value = null
+        _batteryFlow.value = null
         super.onDestroy()
     }
 
@@ -448,7 +592,13 @@ class ControllerService : Service() {
             InjectionMode.NONE           -> getString(R.string.notif_starting)
         }
         val title = getString(R.string.notification_title)
-        val text = if (battery != null) "$modeText  •  🔋 $battery%" else modeText
+        // Append the active named profile name so the user can pull the shade and
+        // see which preset auto-switch loaded for them.
+        val activeProfileName = Prefs.getActiveNamedProfileId(this)?.let { id ->
+            Prefs.listNamedProfiles(this).firstOrNull { it.id == id }?.name
+        }
+        val baseLine = if (battery != null) "$modeText  •  🔋 $battery%" else modeText
+        val text = if (activeProfileName != null) "$baseLine\n🎯 $activeProfileName" else baseLine
 
         // Tap on the notification → open MainActivity
         val openIntent = Intent(this, com.steamcontroller.android.MainActivity::class.java).apply {

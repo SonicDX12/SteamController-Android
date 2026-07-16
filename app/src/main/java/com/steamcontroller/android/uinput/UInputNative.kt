@@ -19,5 +19,7 @@ object UInputNative {
         leftTrigger: Int, rightTrigger: Int,
         dpadX: Int, dpadY: Int
     )
+    /** Desktop mode frame. `keys` is a MouseTarget bitmask. */
+    external fun sendMouseFrame(relX: Int, relY: Int, scrollY: Int, keys: Int)
     external fun destroy()
 }

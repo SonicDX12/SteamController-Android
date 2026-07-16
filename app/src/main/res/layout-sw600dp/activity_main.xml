@@ -1,180 +1,349 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  MainActivity (sw600dp / tablette) — V1.2.
+  Mirror the phone single-column structure but spread to 2 columns:
+    - LEFT  : controller card (SC2026 illustration + Control Mode + gamepad variants) +
+              BT picker (visible only when BT) + Start/Stop
+    - RIGHT : 3 action cards stacked (Calibration / Button mapping / Debug HID)
+  Status pill + transport pill stay full-width on top so they're equally close to both columns.
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="40dp">
+        android:padding="32dp">
 
-        <!-- Top bar with help icon -->
-        <FrameLayout
+        <!-- ━━━━━━━━━━━━ Title row ━━━━━━━━━━━━ -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/main_title"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="36sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCheckUpdate"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/main_check_update_desc"
+                app:icon="@drawable/ic_update"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGithub"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/main_open_github_desc"
+                app:icon="@drawable/ic_github"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnHelp"
                 style="@style/Widget.Material3.Button.IconButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="end|top"
-                android:contentDescription="Help: switching connection modes"
+                android:contentDescription="@string/main_help_desc"
                 app:icon="@drawable/ic_help"
-                app:iconTint="?attr/colorOnSurfaceVariant"
-                tools:ignore="HardcodedText" />
-        </FrameLayout>
-
-        <!-- Header -->
-        <TextView
-            android:id="@+id/tvTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
-            android:text="Steam Controller"
-            android:textColor="?attr/colorPrimary"
-            android:textSize="40sp"
-            android:textStyle="bold"
-            tools:ignore="HardcodedText" />
+                app:iconTint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tvSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="32dp"
-            android:text="for Android via Shizuku"
+            android:layout_marginTop="2dp"
+            android:text="@string/main_subtitle"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="16sp"
-            tools:ignore="HardcodedText" />
+            android:textSize="14sp" />
 
-        <!-- Two columns -->
+        <!-- ━━━━━━━━━━━━ Status pill ━━━━━━━━━━━━ -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/statusPillCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/status_idle_container"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp">
+
+            <TextView
+                android:id="@+id/tvShizukuStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="18dp"
+                android:paddingVertical="12dp"
+                android:text="@string/main_shizuku_checking"
+                android:textColor="@color/status_idle_on_container"
+                android:textSize="14sp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ━━━━━━━━━━━━ Transport pill ━━━━━━━━━━━━ -->
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggleTransport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTransportUsb"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:text="@string/main_transport_usb"
+                app:icon="@drawable/ic_usb"
+                app:iconGravity="textStart" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTransportBt"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:text="@string/main_transport_bt"
+                app:icon="@drawable/ic_bluetooth"
+                app:iconGravity="textStart" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <!-- ━━━━━━━━━━━━ Two columns ━━━━━━━━━━━━ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:baselineAligned="false">
+            android:layout_marginTop="20dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
 
-            <!-- LEFT column: status + profile + actions -->
+            <!-- LEFT : controller card + variants + BT picker + Start -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
                 android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="16dp">
+                android:orientation="vertical">
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
                     app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                    app:cardCornerRadius="16dp"
+                    app:cardCornerRadius="24dp"
                     app:cardElevation="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
-
-                        <TextView
-                            android:id="@+id/tvShizukuStatus"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Shizuku: checking..."
-                            android:textColor="?attr/colorOnPrimaryContainer"
-                            android:textSize="15sp"
-                            android:layout_marginBottom="8dp"
-                            tools:ignore="HardcodedText" />
+                        android:padding="24dp">
 
                         <TextView
                             android:id="@+id/tvControllerStatus"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Controller: disconnected"
+                            android:layout_gravity="center_horizontal"
+                            android:text="@string/main_controller_disconnected"
                             android:textColor="?attr/colorOnPrimaryContainer"
-                            android:textSize="15sp"
-                            android:layout_marginBottom="8dp"
-                            tools:ignore="HardcodedText" />
-
-                        <TextView
-                            android:id="@+id/tvMode"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Mode: —"
-                            android:textColor="?attr/colorPrimary"
-                            android:textSize="14sp"
-                            android:fontFamily="monospace"
-                            android:layout_marginBottom="6dp"
-                            tools:ignore="HardcodedText" />
+                            android:textSize="24sp"
+                            android:textStyle="bold" />
 
                         <TextView
                             android:id="@+id/tvBattery"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Battery: —"
-                            android:textColor="?attr/colorOnPrimaryContainer"
-                            android:textSize="14sp"
+                            android:layout_gravity="center_horizontal"
+                            android:layout_marginTop="4dp"
                             android:fontFamily="monospace"
-                            tools:ignore="HardcodedText" />
+                            android:text="@string/main_battery_placeholder"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="14sp" />
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="180dp"
+                            android:layout_marginTop="20dp"
+                            android:layout_marginBottom="20dp"
+                            android:contentDescription="@string/main_sc2026_illustration_desc"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/sc2026_controller_black"
+                            app:tint="?attr/colorOnPrimaryContainer" />
+
+                        <TextView
+                            android:id="@+id/tvMode"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_horizontal"
+                            android:layout_marginBottom="14dp"
+                            android:fontFamily="monospace"
+                            android:text="@string/main_mode_placeholder"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="13sp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginBottom="14dp"
+                            android:alpha="0.15"
+                            android:background="?attr/colorOnPrimaryContainer" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/main_control_mode_label"
+                                android:textColor="?attr/colorOnPrimaryContainer"
+                                android:textSize="15sp" />
+
+                            <com.google.android.material.button.MaterialButtonToggleGroup
+                                android:id="@+id/toggleControlMode"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:selectionRequired="true"
+                                app:singleSelection="true">
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btnModeGamepad"
+                                    style="?attr/materialButtonOutlinedStyle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="48dp"
+                                    android:paddingHorizontal="14dp"
+                                    android:text="@string/main_mode_gamepad"
+                                    android:textSize="13sp"
+                                    app:icon="@drawable/ic_gamepad"
+                                    app:iconGravity="textStart"
+                                    app:iconSize="20dp" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btnModeDesktop"
+                                    style="?attr/materialButtonOutlinedStyle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="48dp"
+                                    android:paddingHorizontal="14dp"
+                                    android:text="@string/main_mode_desktop"
+                                    android:textSize="13sp"
+                                    app:icon="@drawable/ic_mouse"
+                                    app:iconGravity="textStart"
+                                    app:iconSize="20dp" />
+                            </com.google.android.material.button.MaterialButtonToggleGroup>
+                        </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Connection"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    android:letterSpacing="0.1"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginBottom="6dp"
-                    tools:ignore="HardcodedText" />
-
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/toggleTransport"
+                <!-- Gamepad variant radios (visible only in Gamepad mode) -->
+                <LinearLayout
+                    android:id="@+id/gamepadVariantSection"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:singleSelection="true"
-                    app:selectionRequired="true">
+                    android:layout_marginTop="16dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnTransportUsb"
-                        style="?attr/materialButtonOutlinedStyle"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:text="USB / Puck"
-                        app:icon="@drawable/ic_usb"
-                        app:iconGravity="textStart"
-                        tools:ignore="HardcodedText" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginBottom="6dp"
+                        android:letterSpacing="0.1"
+                        android:text="@string/main_emulated_controller_label"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnTransportBt"
-                        style="?attr/materialButtonOutlinedStyle"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:text="Bluetooth"
-                        app:icon="@drawable/ic_bluetooth"
-                        app:iconGravity="textStart"
-                        tools:ignore="HardcodedText" />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardCornerRadius="14dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="?attr/colorOutlineVariant"
+                        app:strokeWidth="1dp">
 
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="10dp">
+
+                            <RadioGroup
+                                android:id="@+id/radioGroupGamepadRow1"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+
+                                <com.google.android.material.radiobutton.MaterialRadioButton
+                                    android:id="@+id/rbXbox360"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="@string/main_gamepad_xbox360"
+                                    android:textSize="14sp" />
+
+                                <com.google.android.material.radiobutton.MaterialRadioButton
+                                    android:id="@+id/rbXboxOne"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="@string/main_gamepad_xboxone"
+                                    android:textSize="14sp" />
+                            </RadioGroup>
+
+                            <RadioGroup
+                                android:id="@+id/radioGroupGamepadRow2"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+
+                                <com.google.android.material.radiobutton.MaterialRadioButton
+                                    android:id="@+id/rbDualShock4"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="@string/main_gamepad_ds4"
+                                    android:textSize="14sp" />
+
+                                <com.google.android.material.radiobutton.MaterialRadioButton
+                                    android:id="@+id/rbDualSense"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="@string/main_gamepad_dualsense"
+                                    android:textSize="14sp" />
+                            </RadioGroup>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <!-- BT device picker (visible only when transport=BT) -->
                 <LinearLayout
                     android:id="@+id/btDeviceRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:orientation="horizontal"
+                    android:layout_marginTop="16dp"
                     android:gravity="center_vertical"
+                    android:orientation="horizontal"
                     android:visibility="gone">
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -183,7 +352,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:hint="Bluetooth device">
+                        android:hint="@string/main_bt_device_hint">
 
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
                             android:id="@+id/dropdownBtDevice"
@@ -198,102 +367,275 @@
                         style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:contentDescription="Refresh paired devices"
-                        app:icon="@drawable/ic_refresh"
-                        tools:ignore="HardcodedText" />
+                        android:layout_marginStart="10dp"
+                        android:contentDescription="@string/main_refresh_bt_desc"
+                        app:icon="@drawable/ic_refresh" />
                 </LinearLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilProfile"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
-                    android:hint="Emulated controller">
-
-                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                        android:id="@+id/dropdownProfile"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="none"
-                        tools:ignore="LabelFor" />
-                </com.google.android.material.textfield.TextInputLayout>
-
+                <!-- Big Start / Stop -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnToggleService"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:text="@string/btn_start" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCalibration"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:text="Calibration"
-                    tools:ignore="HardcodedText" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnMapping"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:text="Button mapping"
-                    tools:ignore="HardcodedText" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnDebug"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/btn_debug" />
+                    android:layout_height="64dp"
+                    android:layout_marginTop="18dp"
+                    android:text="@string/btn_start"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="20dp" />
             </LinearLayout>
 
-            <!-- RIGHT column: log -->
-            <com.google.android.material.card.MaterialCardView
+            <!-- RIGHT : action cards stacked -->
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:layout_marginStart="16dp"
-                app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp">
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnCalibration"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="1dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="LOG"
-                        android:textColor="?attr/colorPrimary"
-                        android:textStyle="bold"
-                        android:textSize="12sp"
-                        android:letterSpacing="0.15"
-                        android:layout_marginBottom="8dp"
-                        tools:ignore="HardcodedText" />
-
-                    <TextView
-                        android:id="@+id/tvLog"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnPrimaryContainer"
-                        android:textSize="12sp"
-                        android:fontFamily="monospace"
-                        android:minLines="10"
-                        android:maxLines="20"
-                        android:scrollbars="vertical"
-                        tools:ignore="HardcodedText" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="20dp">
 
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardBackgroundColor="?attr/colorSecondaryContainer"
+                            app:cardCornerRadius="26dp"
+                            app:cardElevation="0dp">
+
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:padding="12dp"
+                                android:src="@drawable/ic_calibration"
+                                app:tint="?attr/colorOnSecondaryContainer"
+                                tools:ignore="ContentDescription" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/main_action_calibration_title"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/main_action_calibration_desc"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnMapping"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="20dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardBackgroundColor="?attr/colorSecondaryContainer"
+                            app:cardCornerRadius="26dp"
+                            app:cardElevation="0dp">
+
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:padding="12dp"
+                                android:src="@drawable/ic_mapping"
+                                app:tint="?attr/colorOnSecondaryContainer"
+                                tools:ignore="ContentDescription" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/main_action_mapping_title"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/main_action_mapping_desc"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnGameProfiles"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="20dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardBackgroundColor="?attr/colorSecondaryContainer"
+                            app:cardCornerRadius="26dp"
+                            app:cardElevation="0dp">
+
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:padding="12dp"
+                                android:src="@drawable/ic_game_profiles"
+                                app:tint="?attr/colorOnSecondaryContainer"
+                                tools:ignore="ContentDescription" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/main_action_profiles_title"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/main_action_profiles_desc"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnDebug"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="20dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardBackgroundColor="?attr/colorSecondaryContainer"
+                            app:cardCornerRadius="26dp"
+                            app:cardElevation="0dp">
+
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:padding="12dp"
+                                android:src="@drawable/ic_debug"
+                                app:tint="?attr/colorOnSecondaryContainer"
+                                tools:ignore="ContentDescription" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/btn_debug"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/main_action_debug_desc"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
         </LinearLayout>
+
+        <!-- Hidden log target — MainActivity.log() writes here for diagnostics. -->
+        <TextView
+            android:id="@+id/tvLog"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+
     </LinearLayout>
 </ScrollView>

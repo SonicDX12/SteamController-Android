@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CalibrationActivity (television, uiMode=television) — V1.2.
+  3-card horizontal layout: DESKTOP (priority for TV) | RUMBLE | STICKS.
+  Sticks card narrower since users on TV rarely fiddle with deadzones.
+-->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:fitsSystemWindows="true">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:background="?attr/colorSurface"
+            app:menu="@menu/menu_calibration"
+            app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
+            app:navigationIconTint="?attr/colorPrimary"
+            app:title="@string/calib_title"
+            app:titleTextColor="?attr/colorPrimary" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="none"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            android:paddingHorizontal="48dp"
+            android:paddingVertical="16dp">
+
+            <!-- ━━━━━━━━━━━━ DESKTOP MODE (priority) ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:letterSpacing="0.18"
+                        android:text="@string/calib_desktop_header"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_mouse_sensitivity"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderMouseSensitivity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/calib_mouse_sensitivity"
+                        android:stepSize="0.1"
+                        android:value="1.0"
+                        android:valueFrom="0.1"
+                        android:valueTo="3.0">
+                        <requestFocus />
+                    </com.google.android.material.slider.Slider>
+
+                    <TextView
+                        android:id="@+id/tvMouseSensitivity"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="14dp"
+                        android:fontFamily="monospace"
+                        android:text="1.0×"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:textSize="14sp"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchTrackpadAsMouse"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_trackpad_switch_label_tv"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ RUMBLE ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:letterSpacing="0.18"
+                        android:text="@string/calib_rumble_header"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_intensity"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderRumbleIntensity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/calib_slider_rumble_intensity_desc"
+                        android:stepSize="5"
+                        android:value="100"
+                        android:valueFrom="0"
+                        android:valueTo="100" />
+
+                    <TextView
+                        android:id="@+id/tvRumbleIntensity"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:fontFamily="monospace"
+                        android:text="100%"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnTestRumble"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:text="@string/calib_test_rumble"
+                        app:cornerRadius="14dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ STICKS ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:letterSpacing="0.18"
+                        android:text="@string/calib_sticks_header"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_deadzone_lr_label"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="13sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <com.google.android.material.slider.Slider
+                                android:id="@+id/sliderLeftDeadzone"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/calib_slider_left_deadzone_desc"
+                                android:stepSize="1"
+                                android:value="8"
+                                android:valueFrom="0"
+                                android:valueTo="40" />
+
+                            <TextView
+                                android:id="@+id/tvLeftDeadzone"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_horizontal"
+                                android:fontFamily="monospace"
+                                android:text="8%"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="11sp"
+                                tools:ignore="HardcodedText" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <com.google.android.material.slider.Slider
+                                android:id="@+id/sliderRightDeadzone"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/calib_slider_right_deadzone_desc"
+                                android:stepSize="1"
+                                android:value="8"
+                                android:valueFrom="0"
+                                android:valueTo="40" />
+
+                            <TextView
+                                android:id="@+id/tvRightDeadzone"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_horizontal"
+                                android:fontFamily="monospace"
+                                android:text="8%"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="11sp"
+                                tools:ignore="HardcodedText" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <com.steamcontroller.android.StickPadView
+                            android:id="@+id/padLeft"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1" />
+
+                        <com.steamcontroller.android.StickPadView
+                            android:id="@+id/padRight"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1" />
+                    </LinearLayout>
+
+                    <!-- Compact Raw labels under each stick -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tvLeftRaw"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:fontFamily="monospace"
+                            android:text="0,0"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="10sp"
+                            tools:ignore="HardcodedText" />
+
+                        <TextView
+                            android:id="@+id/tvRightRaw"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:fontFamily="monospace"
+                            android:text="0,0"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="10sp"
+                            tools:ignore="HardcodedText" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchLeftInvertY"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/calib_invert_l_y"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="11sp" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchRightInvertY"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/calib_invert_r_y"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCalibrateAll"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/calib_calibrate_all"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="14dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

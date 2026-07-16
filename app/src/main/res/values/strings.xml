@@ -11,26 +11,6 @@
     <string name="btn_debug">Debug HID</string>
 
     <string name="help_dialog_title">Switching connection modes</string>
-    <string name="help_dialog_message"><![CDATA[
-<p>The Steam Controller uses the right Puck slot by default. Pairing to another device will overwrite the default pairing. To maintain two pairings simultaneously, one in each slot, switch wireless modes to the left slot before completing a second pairing. Once two pairings are complete, you can switch between them at any time.</p>
-
-<p>The Steam Controller can also maintain a Bluetooth pairing independently of its Puck pairings.</p>
-
-<p>When powered on, the controller connects by default to the last paired connection used. To power off, hold the <b>Steam</b> button for ~5 seconds until you hear the chime and the LED turns off.</p>
-
-<p><b>To switch wireless modes:</b> start with the controller turned off, then power it on with one of:</p>
-<ul>
-<li><b>Puck (right slot)</b> — hold <b>A + R1 + Steam</b>, chime + white LED.</li>
-<li><b>Puck (left slot)</b> — hold <b>A + L1 + Steam</b>, chime + white LED.</li>
-<li><b>Bluetooth</b> — hold <b>B + R1 + Steam</b>, chime + blue LED.</li>
-</ul>
-
-<p><b>To use wired USB-C:</b></p>
-<ul>
-<li>If the controller is <b>off</b>, plug it into the device. Chime + green LED.</li>
-<li>If the controller is <b>on</b> in another mode, hold <b>Steam</b> while plugging it in. Chime + green LED.</li>
-</ul>
-    ]]></string>
     <string name="notification_channel_name">Controller Service</string>
     <string name="notification_title">Steam Controller</string>
     <string name="notification_text">Starting…</string>
@@ -38,4 +18,155 @@
     <string name="notif_mode_inject">Fallback: Shizuku inject (limited)</string>
     <string name="notif_mode_none">No injection method available</string>
     <string name="notif_starting">Connecting…</string>
+
+    <!-- ━━━━━━━━━━━━ MainActivity ━━━━━━━━━━━━ -->
+    <string name="main_title">Steam Controller</string>
+    <string name="main_subtitle">for Android via Shizuku</string>
+    <string name="main_subtitle_tv">for Android TV via Shizuku</string>
+    <string name="main_open_github_desc">Open GitHub repository</string>
+    <string name="main_help_desc">Help: switching connection modes</string>
+    <string name="main_check_update_desc">Check for updates</string>
+    <string name="main_shizuku_checking">Shizuku: checking…</string>
+    <string name="main_transport_usb">USB / Puck</string>
+    <string name="main_transport_bt">Bluetooth</string>
+    <string name="main_controller_disconnected">Controller: disconnected</string>
+    <string name="main_battery_placeholder">Battery: —</string>
+    <string name="main_sc2026_illustration_desc">Steam Controller 2026 illustration</string>
+    <string name="main_mode_placeholder">Mode: —</string>
+    <string name="main_control_mode_label">Control Mode</string>
+    <string name="main_mode_gamepad">Gamepad</string>
+    <string name="main_mode_desktop">Desktop</string>
+    <string name="main_emulated_controller_label">Emulated controller</string>
+    <string name="main_gamepad_xbox360">Xbox 360</string>
+    <string name="main_gamepad_xboxone">Xbox One</string>
+    <string name="main_gamepad_ds4">DualShock 4</string>
+    <string name="main_gamepad_dualsense">DualSense</string>
+    <string name="main_bt_device_hint">Bluetooth device</string>
+    <string name="main_refresh_bt_desc">Refresh paired devices</string>
+    <string name="main_action_calibration_title">Calibration</string>
+    <string name="main_action_calibration_desc">Calibrate sticks and rumble</string>
+    <string name="main_action_mapping_title">Button mapping</string>
+    <string name="main_action_mapping_desc">Remap button inputs</string>
+    <string name="main_action_profiles_title">Game Profiles</string>
+    <string name="main_action_profiles_desc">Save presets and auto-switch by app</string>
+    <string name="main_action_debug_desc">View low-level HID reports</string>
+    <string name="main_connection_label">CONNECTION</string>
+
+    <!-- ━━━━━━━━━━━━ Update checker ━━━━━━━━━━━━ -->
+    <string name="update_dialog_title">Update available</string>
+    <string name="update_dialog_button_update">Update</string>
+    <string name="update_dialog_button_skip">Skip this version</string>
+    <string name="update_dialog_button_later">Later</string>
+    <string name="update_toast_up_to_date">You\'re up to date (%1$s)</string>
+    <string name="update_toast_check_failed">Could not check for updates</string>
+    <string name="update_toast_downloading">Downloading update…</string>
+    <string name="update_toast_grant_install_permission">Allow installing from this app on the next screen, then tap Update again</string>
+
+    <!-- ━━━━━━━━━━━━ CalibrationActivity ━━━━━━━━━━━━ -->
+    <string name="calib_title">Calibration</string>
+    <string name="calib_sticks_header">STICKS</string>
+    <string name="calib_deadzone_label">Deadzone</string>
+    <string name="calib_deadzone_lr_label">Deadzone L / R</string>
+    <string name="calib_invert_y">Invert Y</string>
+    <string name="calib_invert_l_y">Invert L Y</string>
+    <string name="calib_invert_r_y">Invert R Y</string>
+    <string name="calib_calibrate_all">Calibrate All</string>
+    <string name="calib_calibrate_hint">Leave both sticks centered, then tap</string>
+    <string name="calib_rumble_header">RUMBLE</string>
+    <string name="calib_test_intensity">Test intensity</string>
+    <string name="calib_intensity">Intensity</string>
+    <string name="calib_test_rumble">Test rumble</string>
+    <string name="calib_desktop_header">DESKTOP MODE</string>
+    <string name="calib_mouse_sensitivity">Mouse sensitivity</string>
+    <string name="calib_trackpad_switch_label">Trackpads as mouse in Xbox/PS profiles</string>
+    <string name="calib_trackpad_switch_label_tv">Trackpads as mouse (Xbox/PS)</string>
+    <string name="calib_trackpad_hint">When ON, the right trackpad drives a cursor and the left one scrolls — alongside the gamepad.</string>
+    <string name="calib_slider_left_deadzone_desc">Left stick deadzone</string>
+    <string name="calib_slider_right_deadzone_desc">Right stick deadzone</string>
+    <string name="calib_slider_rumble_intensity_desc">Rumble intensity</string>
+
+    <!-- ━━━━━━━━━━━━ DebugActivity ━━━━━━━━━━━━ -->
+    <string name="debug_title">HID Debug</string>
+    <string name="debug_readonly_notice">Live controller state — for reference only, not interactive.</string>
+    <string name="debug_face_buttons">FACE BUTTONS</string>
+    <string name="debug_dpad">D-PAD</string>
+    <string name="debug_bumpers_system">BUMPERS / SYSTEM</string>
+    <string name="debug_sticks_pads">STICKS / PADS (clicks)</string>
+    <string name="debug_sticks_pads_compact">STICKS / PADS</string>
+    <string name="debug_grips_back">GRIPS / BACK</string>
+    <string name="debug_triggers_header">TRIGGERS (0–255)</string>
+    <string name="debug_lt">LT</string>
+    <string name="debug_rt">RT</string>
+    <string name="debug_sticks_header">STICKS (raw ±32767)</string>
+    <string name="debug_left_stick">LEFT STICK</string>
+    <string name="debug_right_stick">RIGHT STICK</string>
+    <string name="debug_left_x">Left X</string>
+    <string name="debug_left_y">Left Y</string>
+    <string name="debug_right_x">Right X</string>
+    <string name="debug_right_y">Right Y</string>
+    <string name="debug_trackpads_header">TRACKPADS (raw ±32767)</string>
+    <string name="debug_left_trackpad">LEFT TRACKPAD</string>
+    <string name="debug_right_trackpad">RIGHT TRACKPAD</string>
+    <string name="debug_imu_quaternion">IMU QUATERNION</string>
+    <string name="debug_raw_report">RAW REPORT (hex)</string>
+    <string name="debug_btn_a">A</string>
+    <string name="debug_btn_b">B</string>
+    <string name="debug_btn_x">X</string>
+    <string name="debug_btn_y">Y</string>
+    <string name="debug_btn_lb">LB</string>
+    <string name="debug_btn_rb">RB</string>
+    <string name="debug_btn_select">SEL</string>
+    <string name="debug_btn_steam_glyph">◆</string>
+    <string name="debug_btn_steam_alt_glyph">☰</string>
+    <string name="debug_btn_start_glyph">≡</string>
+    <string name="debug_btn_start_text">START</string>
+    <string name="debug_btn_qa">QA</string>
+    <string name="debug_dpad_up">▲</string>
+    <string name="debug_dpad_down">▼</string>
+    <string name="debug_dpad_left">◀</string>
+    <string name="debug_dpad_right">▶</string>
+    <string name="debug_btn_l3">L3</string>
+    <string name="debug_btn_r3">R3</string>
+    <string name="debug_btn_lgrip">LGrip</string>
+    <string name="debug_btn_rgrip">RGrip</string>
+    <string name="debug_btn_l4">L4</string>
+    <string name="debug_btn_l5">L5</string>
+    <string name="debug_btn_r4">R4</string>
+    <string name="debug_btn_r5">R5</string>
+
+    <!-- ━━━━━━━━━━━━ MappingActivity ━━━━━━━━━━━━ -->
+    <string name="mapping_title">Button mapping</string>
+    <string name="mapping_hint">Tap any row to remap it. Changes apply live, no service restart needed.</string>
+
+    <!-- ━━━━━━━━━━━━ ProfilesActivity ━━━━━━━━━━━━ -->
+    <string name="profiles_title">Game Profiles</string>
+    <string name="profiles_empty_title">No game profiles yet</string>
+    <string name="profiles_empty_body">Tune your controller for a game, then tap Save current to keep it as a preset. Bind it to an app and we\'ll auto-switch when you launch the game.</string>
+    <string name="profiles_save_current">Save current</string>
+    <string name="profiles_active_badge">ACTIVE</string>
+    <string name="profiles_load">Load</string>
+    <string name="profiles_actions_desc">Profile actions</string>
+    <string name="backup_export_toast">Backup saved</string>
+    <string name="backup_export_failed_toast">Could not save backup: %1$s</string>
+    <string name="backup_import_toast">Restored %1$d game profile(s). Restart the service for full effect.</string>
+    <string name="backup_import_failed_toast">Could not restore backup: %1$s</string>
+
+    <!-- ━━━━━━━━━━━━ AppPickerActivity ━━━━━━━━━━━━ -->
+    <string name="app_picker_title">Bind apps</string>
+    <string name="app_picker_hint">Tick every app that should auto-switch to this profile when launched.</string>
+
+    <!-- ━━━━━━━━━━━━ Connection help dialog ━━━━━━━━━━━━ -->
+    <string name="help_para_puck_slots">The Steam Controller uses the right Puck slot by default. Pairing to another device will overwrite the default pairing. To maintain two pairings simultaneously, one in each slot, switch wireless modes to the left slot before completing a second pairing. Once two pairings are complete, you can switch between them at any time.</string>
+    <string name="help_para_bt_independent">The Steam Controller can also maintain a Bluetooth pairing independently of its Puck pairings.</string>
+    <string name="help_para_power_off">When powered on, the controller connects by default to the last paired connection used. To power off, hold the Steam button for ~5 seconds until you hear the chime and the LED turns off.</string>
+    <string name="help_section_wireless">To switch wireless modes:</string>
+    <string name="help_para_wireless_intro">Start with the controller turned off, then power it on with one of these combos:</string>
+    <string name="help_section_wired">To use wired USB-C:</string>
+
+    <!-- ━━━━━━━━━━━━ Menus ━━━━━━━━━━━━ -->
+    <string name="menu_reset_defaults">Reset to defaults</string>
+    <string name="menu_log_to_file">Log to File</string>
+    <string name="menu_save">Save</string>
+    <string name="menu_export_backup">Export backup…</string>
+    <string name="menu_import_backup">Import backup…</string>
 </resources>

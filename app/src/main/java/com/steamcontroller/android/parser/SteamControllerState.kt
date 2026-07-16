@@ -23,14 +23,8 @@ data class SteamControllerState(
     val quatX: Short = 0,        // bytes 34-35
     val quatY: Short = 0,        // bytes 36-37
     val quatZ: Short = 0,        // bytes 38-39
-
-    val battery: Int = -1        // bytes 44-45 UInt16 LE (0xFFFF = full). -1 = unknown
 ) {
     fun isButtonPressed(mask: Int) = (buttons and mask) != 0
-
-    /** Battery as 0..100, or null if unknown. 0xFFFF raw = 100%. */
-    val batteryPercent: Int?
-        get() = if (battery < 0) null else (battery * 100 / 0xFFFF).coerceIn(0, 100)
 }
 
 // Source: github.com/ddeverill/SteamlessController/blob/main/src/steam/SteamController.h
@@ -63,7 +57,7 @@ object Buttons {
     const val LB           = 0x00080000
     const val RS_TOUCH     = 0x00100000
     const val TP_RT        = 0x00200000  // right trackpad touch
-    // bit 0x00400000 = unused / unknown
+    const val LT_FULL      = 0x00400000  // LT full digital press (empirically suspected — V1.2)
     const val RT_FULL      = 0x00800000  // RT full digital press
 
     // byte5 (flags)

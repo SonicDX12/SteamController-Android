@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  CalibrationActivity (phone) — V1.2 redesign.
+  Mockup validated by user. Structure:
+    1. STICKS card: deadzone sliders (one per stick), compact stick visualizations
+       side-by-side with Raw X/Y readouts, single "Calibrate All" button.
+    2. RUMBLE card: intensity slider + Pulse test button.
+    3. DESKTOP card: mouse sensitivity slider + Trackpads-as-mouse switch.
+-->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
@@ -17,7 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorSurface"
-            app:title="Calibration"
+            app:title="@string/calib_title"
             app:titleTextColor="?attr/colorPrimary"
             app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
             app:navigationIconTint="?attr/colorPrimary"
@@ -35,320 +44,340 @@
             android:orientation="vertical"
             android:padding="20dp">
 
-            <!-- Two sticks side by side -->
-            <LinearLayout
+            <!-- ━━━━━━━━━━━━ STICKS ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="16dp">
-
-                <!-- LEFT STICK -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
-                    app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="12dp"
-                        android:gravity="center_horizontal">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Left Stick"
-                            android:textColor="?attr/colorOnPrimaryContainer"
-                            android:textStyle="bold"
-                            android:textSize="14sp"
-                            android:layout_marginBottom="8dp"
-                            tools:ignore="HardcodedText"
-                            xmlns:tools="http://schemas.android.com/tools" />
-
-                        <com.steamcontroller.android.StickPadView
-                            android:id="@+id/padLeft"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:minHeight="140dp" />
-
-                        <TextView
-                            android:id="@+id/tvLeftRaw"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:textColor="?attr/colorOnPrimaryContainer"
-                            android:textSize="11sp"
-                            android:fontFamily="monospace"
-                            android:text="raw: 0, 0"
-                            tools:ignore="HardcodedText"
-                            xmlns:tools="http://schemas.android.com/tools" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- RIGHT STICK -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="6dp"
-                    app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="12dp"
-                        android:gravity="center_horizontal">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Right Stick"
-                            android:textColor="?attr/colorOnPrimaryContainer"
-                            android:textStyle="bold"
-                            android:textSize="14sp"
-                            android:layout_marginBottom="8dp"
-                            tools:ignore="HardcodedText"
-                            xmlns:tools="http://schemas.android.com/tools" />
-
-                        <com.steamcontroller.android.StickPadView
-                            android:id="@+id/padRight"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:minHeight="140dp" />
-
-                        <TextView
-                            android:id="@+id/tvRightRaw"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:textColor="?attr/colorOnPrimaryContainer"
-                            android:textSize="11sp"
-                            android:fontFamily="monospace"
-                            android:text="raw: 0, 0"
-                            tools:ignore="HardcodedText"
-                            xmlns:tools="http://schemas.android.com/tools" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
-
-            <!-- LEFT controls -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="LEFT STICK"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.15"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="4dp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Deadzone"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="13sp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
-
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderLeftDeadzone"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0"
-                android:valueTo="30"
-                android:stepSize="1"
-                android:value="8" />
-
-            <TextView
-                android:id="@+id/tvLeftDeadzone"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp"
-                android:fontFamily="monospace"
-                android:text="8%"
-                android:layout_marginBottom="8dp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="8dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnLeftSetCenter"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="4dp"
-                    android:text="Set center"
-                    xmlns:tools="http://schemas.android.com/tools"
-                    tools:ignore="HardcodedText" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switchLeftInvertY"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:text="Invert Y"
-                    android:textColor="?attr/colorOnSurface"
-                    android:layout_marginStart="8dp"
-                    xmlns:tools="http://schemas.android.com/tools"
-                    tools:ignore="HardcodedText" />
-            </LinearLayout>
-
-            <!-- RIGHT controls -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="RIGHT STICK"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.15"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="4dp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Deadzone"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="13sp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
-
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderRightDeadzone"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0"
-                android:valueTo="30"
-                android:stepSize="1"
-                android:value="8" />
-
-            <TextView
-                android:id="@+id/tvRightDeadzone"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp"
-                android:fontFamily="monospace"
-                android:text="8%"
-                android:layout_marginBottom="8dp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnRightSetCenter"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="4dp"
-                    android:text="Set center"
-                    xmlns:tools="http://schemas.android.com/tools"
-                    tools:ignore="HardcodedText" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switchRightInvertY"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:text="Invert Y"
-                    android:textColor="?attr/colorOnSurface"
-                    android:layout_marginStart="8dp"
-                    xmlns:tools="http://schemas.android.com/tools"
-                    tools:ignore="HardcodedText" />
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Tip: leave both sticks at rest, then tap 'Set center' on each. Changes are saved live and apply to the active emulation."
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp"
-                android:layout_marginTop="24dp"
                 android:layout_marginBottom="16dp"
-                android:fontFamily="sans-serif-light"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
 
-            <!-- Rumble -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="RUMBLE"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.15"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Intensity"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="13sp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_sticks_header"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.18"
+                        android:layout_marginBottom="14dp" />
 
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderRumbleIntensity"
+                    <!-- Deadzone row (label + two sliders + two %) -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_deadzone_label"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:baselineAligned="false">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="8dp"
+                            android:orientation="vertical">
+
+                            <com.google.android.material.slider.Slider
+                                android:id="@+id/sliderLeftDeadzone"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/calib_slider_left_deadzone_desc"
+                                android:valueFrom="0"
+                                android:valueTo="40"
+                                android:stepSize="1"
+                                android:value="8" />
+
+                            <TextView
+                                android:id="@+id/tvLeftDeadzone"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_horizontal"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="12sp"
+                                android:fontFamily="monospace"
+                                android:text="8%"
+                                tools:ignore="HardcodedText" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
+
+                            <com.google.android.material.slider.Slider
+                                android:id="@+id/sliderRightDeadzone"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/calib_slider_right_deadzone_desc"
+                                android:valueFrom="0"
+                                android:valueTo="40"
+                                android:stepSize="1"
+                                android:value="8" />
+
+                            <TextView
+                                android:id="@+id/tvRightDeadzone"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_horizontal"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="12sp"
+                                android:fontFamily="monospace"
+                                android:text="8%"
+                                tools:ignore="HardcodedText" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Sticks visualization row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:orientation="horizontal"
+                        android:baselineAligned="false">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center_horizontal">
+
+                            <com.steamcontroller.android.StickPadView
+                                android:id="@+id/padLeft"
+                                android:layout_width="match_parent"
+                                android:layout_height="120dp" />
+
+                            <TextView
+                                android:id="@+id/tvLeftRaw"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="11sp"
+                                android:fontFamily="monospace"
+                                android:text="Raw X: 0\nRaw Y: 0"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchLeftInvertY"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/calib_invert_y"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="10dp"
+                            android:orientation="vertical"
+                            android:gravity="center_horizontal">
+
+                            <com.steamcontroller.android.StickPadView
+                                android:id="@+id/padRight"
+                                android:layout_width="match_parent"
+                                android:layout_height="120dp" />
+
+                            <TextView
+                                android:id="@+id/tvRightRaw"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="11sp"
+                                android:fontFamily="monospace"
+                                android:text="Raw X: 0\nRaw Y: 0"
+                                tools:ignore="HardcodedText" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchRightInvertY"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/calib_invert_y"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Single Calibrate All button — captures center for both sticks at once -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCalibrateAll"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/calib_calibrate_all"
+                        android:textStyle="bold"
+                        app:cornerRadius="16dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/calib_calibrate_hint"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="11sp"
+                        android:fontFamily="sans-serif-light" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ RUMBLE ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:valueFrom="0"
-                android:valueTo="100"
-                android:stepSize="5"
-                android:value="100" />
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
 
-            <TextView
-                android:id="@+id/tvRumbleIntensity"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp"
-                android:fontFamily="monospace"
-                android:text="100%"
-                android:layout_marginBottom="12dp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTestRumble"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_rumble_header"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.18"
+                        android:layout_marginBottom="6dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_test_intensity"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderRumbleIntensity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/calib_slider_rumble_intensity_desc"
+                        android:valueFrom="0"
+                        android:valueTo="100"
+                        android:stepSize="5"
+                        android:value="100" />
+
+                    <TextView
+                        android:id="@+id/tvRumbleIntensity"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace"
+                        android:text="100%"
+                        android:layout_marginBottom="12dp"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnTestRumble"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="@string/calib_test_rumble"
+                        app:cornerRadius="16dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ DESKTOP MODE ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Test rumble (500ms pulse)"
-                android:layout_marginBottom="24dp"
-                xmlns:tools="http://schemas.android.com/tools"
-                tools:ignore="HardcodedText" />
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_desktop_header"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.18"
+                        android:layout_marginBottom="6dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_mouse_sensitivity"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderMouseSensitivity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/calib_mouse_sensitivity"
+                        android:valueFrom="0.1"
+                        android:valueTo="3.0"
+                        android:stepSize="0.1"
+                        android:value="1.0" />
+
+                    <TextView
+                        android:id="@+id/tvMouseSensitivity"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace"
+                        android:text="1.0×"
+                        android:layout_marginBottom="16dp"
+                        tools:ignore="HardcodedText" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchTrackpadAsMouse"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_trackpad_switch_label"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/calib_trackpad_hint"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="11sp"
+                        android:fontFamily="sans-serif-light"
+                        android:layout_marginTop="4dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
     </ScrollView>

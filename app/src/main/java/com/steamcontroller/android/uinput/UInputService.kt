@@ -60,6 +60,14 @@ class UInputService : IUInputService.Stub {
         }
     }
 
+    override fun sendMouseFrame(relX: Int, relY: Int, scrollY: Int, keys: Int) {
+        try {
+            UInputNative.sendMouseFrame(relX, relY, scrollY, keys)
+        } catch (t: Throwable) {
+            Log.e(TAG, "sendMouseFrame failed: ${t.message}")
+        }
+    }
+
     override fun pollForceFeedback(): IntArray? {
         return try {
             UInputNative.pollFFEvent()
@@ -81,6 +89,21 @@ class UInputService : IUInputService.Stub {
         } catch (t: Throwable) {
             Log.e(TAG, "runShellCommand failed: ${t.message}")
             -1
+        }
+    }
+
+    override fun runShellCommandForOutput(cmd: Array<String>?): String? {
+        if (cmd.isNullOrEmpty()) return null
+        return try {
+            val proc = ProcessBuilder(cmd.toList())
+                .redirectErrorStream(true)
+                .start()
+            val output = proc.inputStream.bufferedReader().readText()
+            proc.waitFor()
+            output.trim()
+        } catch (t: Throwable) {
+            Log.e(TAG, "runShellCommandForOutput failed: ${t.message}")
+            null
         }
     }
 

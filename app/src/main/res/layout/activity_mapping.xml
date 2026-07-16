@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  MappingActivity (phone) — V1.2 redesign.
+  Rows show: [source SC button icon] name  →  [target colored icon] target name (chevron)
+  Tapping anywhere on a row opens the remap dialog. The earlier SC2026 diagram has
+  been removed: a top-view drawing can't show back paddles / grips meaningfully,
+  so it added confusion more than utility.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
+    android:orientation="vertical"
     android:background="?attr/colorSurface">
 
     <com.google.android.material.appbar.AppBarLayout
@@ -18,18 +25,16 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorSurface"
-            app:title="Button mapping"
+            app:title="@string/mapping_title"
             app:titleTextColor="?attr/colorPrimary"
             app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
             app:navigationIconTint="?attr/colorPrimary"
-            app:menu="@menu/menu_mapping"
-            tools:ignore="HardcodedText" />
+            app:menu="@menu/menu_mapping" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        android:layout_height="match_parent">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -40,11 +45,10 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Remap each Steam Controller button to any virtual gamepad button. Changes apply live, no service restart needed."
+                android:text="@string/mapping_hint"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="13sp"
-                android:layout_marginBottom="20dp"
-                tools:ignore="HardcodedText" />
+                android:layout_marginBottom="20dp" />
 
             <LinearLayout
                 android:id="@+id/mappingContainer"
@@ -54,4 +58,4 @@
         </LinearLayout>
     </ScrollView>
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</LinearLayout>

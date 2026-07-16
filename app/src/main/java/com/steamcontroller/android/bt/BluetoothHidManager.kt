@@ -27,6 +27,7 @@ class BluetoothHidManager(private val context: Context) {
         private const val VALVE_NOTIFY_HIGH: Long = 0x100f6c7aL
         private const val VALVE_WRITE_LOW: Long   = 0x100f6cb5L
         private const val VALVE_WRITE_HIGH: Long  = 0x100f6cbeL
+        private const val BATTERY_CHAR_SHORT: Long = 0x100f6c78L
 
         val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
@@ -43,6 +44,8 @@ class BluetoothHidManager(private val context: Context) {
 
     private var gatt: BluetoothGatt? = null
     private var featureWriteChar: BluetoothGattCharacteristic? = null
+    private var batteryChar: BluetoothGattCharacteristic? = null
+    private var pendingBatteryRead = false
 
     private val pendingSubs = mutableListOf<BluetoothGattCharacteristic>()
     private var subsIndex = 0
@@ -89,6 +92,8 @@ class BluetoothHidManager(private val context: Context) {
         } finally {
             gatt = null
             featureWriteChar = null
+            batteryChar = null
+            pendingBatteryRead = false
             pendingSubs.clear()
             subsIndex = 0
             state = State.IDLE
@@ -96,33 +101,40 @@ class BluetoothHidManager(private val context: Context) {
         }
     }
 
-    /** Heartbeat: send 0x85 to feature write char. Skip if a write is already in flight. */
     /**
      * Send a rumble command to the controller.
      * Magnitudes are Android FF values (0..65535) — strong = left motor, weak = right.
      *
+     * REVERTED (2026-07-12): tried switching to OUT_HAPTIC_RUMBLE (0x80), the "modern"
+     * continuous-haptic output report documented by github.com/ddeverill/SteamlessController
+     * (SteamController.cpp SendRumbleOutput). On real SC2026 hardware over this BLE
+     * characteristic it produced NO vibration at all, while this 0x8F pulse format DOES
+     * (confirmed on hardware, feel not yet tuned). Likely explanation: 0x80/0x81/0x82 are
+     * only valid as genuine USB HID *output* reports (a separate report channel from the
+     * feature-report/raw-command scheme), which doesn't necessarily exist as a raw
+     * writable command over this vendor GATT characteristic. 0x8F is the older SC1-style
+     * direct command (hid-steam.c HAPTIC_PULSE) which the SC2026 firmware apparently still
+     * honors here. Do not retry 0x80 without first confirming (via hardware log/sniff)
+     * that a *different* characteristic in the 100f6cb5-be write range is meant for it.
+     *
      * Payload format inspired by the Linux `hid-steam` driver (steam_haptic_pulse):
-     *   byte 0: command id (0x8F = HAPTIC_PULSE on older Steam Controllers — likely
-     *           different on SC2026, to be validated empirically)
+     *   byte 0: command id (0x8F = HAPTIC_PULSE)
      *   byte 1: pad id (0 = left, 1 = right)
      *   bytes 2-3: high period (u16 LE, microseconds — actuator ON time per cycle)
      *   bytes 4-5: low period  (u16 LE, microseconds — actuator OFF time per cycle)
      *   bytes 6-7: repeat count (u16 LE, 0xFFFF for continuous)
      *
-     * Magnitude is encoded by the ratio high/low. Mapping used here:
-     *   magnitude 0xFFFF → high=1000us, low=1000us  (50% duty, full strength)
-     *   magnitude 0x0000 → no command sent (treated as stop)
+     * Magnitude is encoded by the ratio high/low, repeated continuously (repeat=0xFFFF):
+     *   magnitude 0xFFFF → high=2000us, low=1000us  (~66% duty, full strength)
+     *   magnitude 0x0000 → explicit stop (repeat=0)
      */
     fun sendRumble(strong: Int, weak: Int) {
         if (state != State.READY) return
         val ch = featureWriteChar ?: return
         val g = gatt ?: return
 
-        val left  = magnitudeToPayload(0, strong) ?: return
-        val right = magnitudeToPayload(1, weak)   ?: return
-
         // Send left then right. WRITE_NO_RESPONSE so they don't queue up acks.
-        for (payload in listOf(left, right)) {
+        for (payload in listOf(magnitudeToPayload(0, strong), magnitudeToPayload(1, weak))) {
             try {
                 ch.value = payload
                 ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
@@ -133,18 +145,51 @@ class BluetoothHidManager(private val context: Context) {
         }
     }
 
-    private fun magnitudeToPayload(padId: Int, magnitude: Int): ByteArray? {
-        // 0 magnitude → don't bother sending (the controller will stop on its own
-        // once the previous pulse's repeat count expires)
+    private fun magnitudeToPayload(padId: Int, magnitude: Int): ByteArray {
         val mag = magnitude.coerceIn(0, 0xFFFF)
-        if (mag == 0) return null
-        // Map magnitude 0..65535 to high period 100..2000 microseconds (inverse: stronger = shorter? we try direct).
-        // Empirical: try direct mapping first. If feels backwards, invert.
-        val highPeriod = (mag * 2000 / 0xFFFF).coerceIn(100, 2000)
-        val lowPeriod = 1000
-        val repeat = 1
+        if (mag == 0) {
+            // BUG FIX (2026-07-12): this used to return null here and sendRumble() would
+            // bail out without writing anything at all, on the assumption that "the
+            // controller will stop on its own once the previous pulse's repeat count
+            // expires". Confirmed wrong on hardware — a repeat=1 pulse from the branch
+            // below just buzzes continuously, and the calibration screen's "Test rumble"
+            // button had no way to ever stop it (magnitude 0 was silently skipped).
+            // Explicit stop: repeat=0 to cancel any in-flight pulse train.
+            return byteArrayOf(0x8F.toByte(), padId.toByte(), 0, 0, 0, 0, 0, 0)
+        }
+        // FIX (2026-07-12): the previous mapping kept lowPeriod fixed at 1000us and only
+        // scaled highPeriod (100-2000us), which changes the pulse *frequency* across the
+        // magnitude range (from ~1/(100+1000)=909Hz at low magnitude down to
+        // 1/(2000+1000)=333Hz at max). LRA actuators (used in the Steam Controller's
+        // haptics) only move significantly near their mechanical resonant frequency —
+        // typically ~170-200Hz for this class of actuator — so most of that range was
+        // driving well off-resonance, which loses amplitude independently of duty cycle.
+        // Now the cycle period is held ~constant near resonance and only the duty cycle
+        // (high/low ratio) varies with magnitude, which is the correct lever for perceived
+        // intensity on a fixed-frequency drive. Exact resonant frequency is unconfirmed for
+        // the SC2026 (no datasheet) — retune totalPeriodUs if this still feels off.
+        //
+        // ROUND 2 (2026-07-12): still too weak at 182Hz/88% max duty. Two changes together
+        // (confounds the next test, but each is independently well-motivated and cheap to
+        // back out if needed): nudged the frequency down to ~160Hz (period 6250us — some
+        // LRAs used in game controllers resonate lower than 182Hz), and pushed max duty
+        // from 88% to 97% (near-continuous drive at full magnitude — 0x8F's on/off pulse
+        // model may just have a firmness ceiling below what a "big motor spins" rumble
+        // feels like; 97% duty is close to that ceiling for this command).
+        val totalPeriodUs = 6250  // ~160Hz
+        val minDutyPct = 25
+        val maxDutyPct = 97
+        val dutyPct = minDutyPct + (mag * (maxDutyPct - minDutyPct) / 0xFFFF)
+        val highPeriod = (totalPeriodUs * dutyPct / 100).coerceIn(1, totalPeriodUs - 1)
+        val lowPeriod = totalPeriodUs - highPeriod
+        // FIX (2026-07-12): was hardcoded to 1 — a single ~2-3ms pulse per send, repeated
+        // only every 50-200ms by ControllerService.forwardRumble's throttle, so the motor
+        // sat idle >95% of the time. Confirmed on hardware: felt too weak. 0xFFFF matches
+        // our own documented protocol ("repeat count, 0xFFFF for continuous") — the pulse
+        // now cycles continuously between sends instead of firing one brief blip.
+        val repeat = 0xFFFF
         return byteArrayOf(
-            0x8F.toByte(),                       // command id (HAPTIC_PULSE — guess)
+            0x8F.toByte(),                       // command id (HAPTIC_PULSE)
             padId.toByte(),
             (highPeriod and 0xFF).toByte(), (highPeriod shr 8 and 0xFF).toByte(),
             (lowPeriod and 0xFF).toByte(),  (lowPeriod shr 8 and 0xFF).toByte(),
@@ -238,6 +283,7 @@ class BluetoothHidManager(private val context: Context) {
 
             pendingSubs.clear()
             featureWriteChar = null
+            batteryChar = null
             for (ch in valve.characteristics) {
                 val short = shortUuid(ch.uuid) ?: continue
                 val canNotify = (ch.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0
@@ -247,6 +293,9 @@ class BluetoothHidManager(private val context: Context) {
 
                 if (canNotify && short in VALVE_NOTIFY_LOW..VALVE_NOTIFY_HIGH) {
                     pendingSubs.add(ch)
+                }
+                if (short == BATTERY_CHAR_SHORT) {
+                    batteryChar = ch
                 }
                 if (canWrite && short in VALVE_WRITE_LOW..VALVE_WRITE_HIGH && featureWriteChar == null) {
                     featureWriteChar = ch
@@ -275,6 +324,30 @@ class BluetoothHidManager(private val context: Context) {
         ) {
             heartbeatBusy.set(false)
             if (status != 0) Log.w(TAG, "Write ${ch.uuid} failed: status=$status")
+            // GATT ops are serialized (only one in flight) — chain the seed battery read
+            // right after the disable-lizard write that follows subscription setup finishes.
+            if (pendingBatteryRead) {
+                pendingBatteryRead = false
+                batteryChar?.let { g.readCharacteristic(it) }
+            }
+        }
+
+        // Deprecated 3-arg overload (not the API 33+ byte[]-carrying one) — minSdk 26 means
+        // the OS-side BluetoothGatt implementation on most devices only ever calls this one.
+        @Suppress("DEPRECATION")
+        override fun onCharacteristicRead(
+            g: BluetoothGatt,
+            ch: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                Log.w(TAG, "Battery seed read failed: status=$status")
+                return
+            }
+            val data = ch.value ?: return
+            if (shortUuid(ch.uuid) == BATTERY_CHAR_SHORT && data.size == 14) {
+                onReport?.invoke(byteArrayOf(0x43.toByte(), data[1], 0x00))
+            }
         }
 
         private var reportCounter = 0
@@ -284,15 +357,32 @@ class BluetoothHidManager(private val context: Context) {
         ) {
             val data = ch.value ?: return
             reportCounter++
-            // BLE strips the HID Report ID prefix; prepend 0x45 to reuse the USB parser.
-            // Only state reports (>=40 bytes) get the prefix; short reports (battery/status) are forwarded as-is.
-            val toForward: ByteArray = if (data.size >= 40) {
-                val withId = ByteArray(data.size + 1)
-                withId[0] = 0x45
-                System.arraycopy(data, 0, withId, 1, data.size)
-                withId
-            } else {
-                data
+            val short = shortUuid(ch.uuid)
+            // BLE strips the HID Report ID prefix; prepend it back to reuse the USB parser.
+            // State reports (>=40 bytes) get 0x45.
+            //
+            // Confirmed on hardware (2026-07-12 logcat capture) — two distinct short reports,
+            // neither matching the 2-byte guess originally assumed here:
+            //  - 100f6c78, 14 bytes, e.g. "01 5d ff 0f 2c 10 00 00 00 00 00 00 14 75": byte[1]
+            //    (0x5d = 93) stays constant across samples seconds apart while every other
+            //    byte fluctuates (counter/checksum) — almost certainly the battery percent.
+            //    Re-prefixed as 0x43 to reuse SteamReportParser.parseBatteryStatus.
+            //  - 100f6c79, 5 bytes, alternating "01 02 00 00 00" / "00 02 00 00 00" in
+            //    lockstep with our 800ms heartbeat write — an ack/status ping-pong tied to
+            //    writes, NOT battery. Forwarded as-is (unparsed).
+            val toForward: ByteArray = when {
+                data.size >= 40 -> {
+                    val withId = ByteArray(data.size + 1)
+                    withId[0] = 0x45
+                    System.arraycopy(data, 0, withId, 1, data.size)
+                    withId
+                }
+                short == BATTERY_CHAR_SHORT && data.size == 14 -> byteArrayOf(0x43.toByte(), data[1], 0x00)
+                else -> {
+                    Log.v(TAG, "Unrecognized short report (${data.size}B) from ${ch.uuid}: " +
+                        data.joinToString(" ") { "%02x".format(it) })
+                    data
+                }
             }
             // Log only the first report and one every 1000 (Hz check) — way less spammy
             if (reportCounter == 1 || reportCounter % 1000 == 0) {
@@ -310,10 +400,15 @@ class BluetoothHidManager(private val context: Context) {
             state = State.READY
             if (ch == null) {
                 Log.w(TAG, "No feature write char; skipping disable lizard")
+                // Notify-only battery char never pushes until its value changes on the
+                // firmware side — seed it with an explicit read so the UI isn't stuck on
+                // "—" for controllers whose battery % doesn't tick during the session.
+                batteryChar?.let { g.readCharacteristic(it) }
                 return
             }
             ch.value = DISABLE_LIZARD
             ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            pendingBatteryRead = batteryChar != null
             val ok = g.writeCharacteristic(ch)
             Log.i(TAG, "Disable lizard write: $ok")
             return
