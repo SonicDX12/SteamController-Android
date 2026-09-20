@@ -69,6 +69,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Install alongside a release build instead of replacing it: the two have
+            // different signatures and the release may carry a higher versionCode, so a
+            // plain debug install fails and uninstalling would take the user's
+            // calibration and mappings with it. Shizuku permission is per-package, so
+            // the debug build asks for its own.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
