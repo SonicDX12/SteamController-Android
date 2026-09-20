@@ -231,12 +231,38 @@ class BluetoothHidManager(private val context: Context) {
     }
 
     /**
-     * Re-assert the lizard-off state. The firmware reverts on its own after a silence,
-     * so this must keep running for as long as we drive the controller.
+     * Lizard-mode keepalive — DISABLED over BLE, deliberately.
+     *
+     * Dropping the 64-byte padding got these writes accepted (no more GATT status 7), and
+     * the firmware promptly started buzzing continuously: it is reading the buffer as
+     * something else entirely. That makes sense next to the one format known to work on
+     * this characteristic, V2's haptic pulse, which is [0x8F, padId, args...] — command id
+     * in byte 0, no feature-report wrapper and no size byte. Our [0x01, 0x81, 0x00] puts
+     * 0x01 in the command slot, and 0x81 — OUT_HAPTIC_PULSE — right behind it.
+     *
+     * So the vendor characteristic is a raw command channel, not a HID feature-report one,
+     * and the encapsulation upstream documents (which it drives over HID-over-GATT on
+     * Windows) does not apply here. Sending nothing is the safe state: the firmware simply
+     * stays in lizard mode, which is where it already was — the bare 0x85 V2 sent is
+     * SET_DEFAULT_MAPPINGS, i.e. lizard ON.
+     *
+     * Next thing to try, one write at a time with a finger ready on the power button:
+     * [0x81] alone, then [0x87, size, key, lo, hi, ...] for the trackpad settings.
      */
     fun sendHeartbeat() {
-        enqueueWrite(SteamCommands.clearDigitalMappings(padded = false))
-        enqueueWrite(SteamCommands.disableTrackpadModes(padded = false))
+        // Intentionally empty until the raw command format is confirmed on hardware.
+    }
+
+    /**
+     * Silence any haptic pulse train left running on the controller.
+     *
+     * A pulse sent with repeat=0xFFFF runs until something cancels it, and a malformed
+     * write can start one, so the controller can be found already buzzing at connect time.
+     * repeat=0 on both pads clears it.
+     */
+    fun stopAllHaptics() {
+        enqueueWrite(pulsePayload(0, 0), BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+        enqueueWrite(pulsePayload(1, 0), BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
     }
 
     /** Enable or disable the raw accel/gyro block in the state report. */
@@ -246,8 +272,9 @@ class BluetoothHidManager(private val context: Context) {
 
     /** Hand the controller back to its firmware emulation. Call before disconnecting. */
     fun restoreLizardMode() {
-        enqueueWrite(SteamCommands.restoreDefaultMappings(padded = false))
-        enqueueWrite(SteamCommands.loadDefaultSettings(padded = false))
+        // Nothing to restore: we never took the controller out of lizard mode over BLE.
+        // Do stop the motors, though — leaving them running would outlive the app.
+        stopAllHaptics()
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -413,9 +440,8 @@ class BluetoothHidManager(private val context: Context) {
                 Log.w(TAG, "No feature write char; skipping disable lizard")
                 return
             }
-            // Two-step lizard-off: clear the firmware's digital mappings, then take the
-            // trackpads out of mouse mode. Queued, so they go out one write at a time.
-            sendHeartbeat()
+            // Clear any haptic left running from a previous session or a bad write.
+            stopAllHaptics()
             return
         }
 

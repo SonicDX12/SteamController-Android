@@ -13,6 +13,17 @@ data class BatteryStatus(
 ) {
     val isCharging: Boolean get() = chargeState == CHARGING || chargeState == CHARGING_DONE
 
+    /**
+     * How this reading should be shown. While charging, the percent is worth less than the
+     * fact of charging — it sticks at 100 on a full pack and tells the user nothing — so
+     * the state leads and the level follows only while it still means something.
+     */
+    fun describe(): String = when {
+        chargeState == CHARGING_DONE -> "Charged"
+        chargeState == CHARGING      -> "Charging · $percent%"
+        else                         -> "$percent%"
+    }
+
     companion object {
         const val DISCHARGING = 1
         const val CHARGING = 2

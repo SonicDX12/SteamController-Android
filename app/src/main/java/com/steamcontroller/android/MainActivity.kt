@@ -179,8 +179,9 @@ class MainActivity : AppCompatActivity() {
 
         // Observe battery level from the controller (parsed from each state report)
         lifecycleScope.launch {
-            ControllerService.batteryFlow.collect { pct ->
-                binding.tvBattery.text = if (pct == null) "Battery: —" else "Battery: $pct%"
+            ControllerService.batteryFlow.collect { battery ->
+                binding.tvBattery.text =
+                    if (battery == null) "Battery: —" else "Battery: ${battery.describe()}"
             }
         }
 

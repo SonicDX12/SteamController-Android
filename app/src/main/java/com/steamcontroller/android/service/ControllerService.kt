@@ -16,6 +16,7 @@ import com.steamcontroller.android.Transport
 import com.steamcontroller.android.bt.BluetoothHidManager
 import com.steamcontroller.android.input.GamepadMapper
 import com.steamcontroller.android.input.ShizukuInputInjector
+import com.steamcontroller.android.parser.BatteryStatus
 import com.steamcontroller.android.parser.Buttons
 import com.steamcontroller.android.parser.SteamControllerState
 import com.steamcontroller.android.parser.SteamReportParser
@@ -58,9 +59,10 @@ class ControllerService : Service() {
         private val _profileFlow = MutableStateFlow<Int?>(null)
         val profileFlow: StateFlow<Int?> = _profileFlow.asStateFlow()
 
-        // Controller battery as 0..100, or null if unknown. Updated when a HID report carries it.
-        private val _batteryFlow = MutableStateFlow<Int?>(null)
-        val batteryFlow: StateFlow<Int?> = _batteryFlow.asStateFlow()
+        // Controller battery, or null if unknown. Carries the charge state as well as the
+        // percent, so the UI can say "charging" instead of a level that is not moving.
+        private val _batteryFlow = MutableStateFlow<BatteryStatus?>(null)
+        val batteryFlow: StateFlow<BatteryStatus?> = _batteryFlow.asStateFlow()
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -400,7 +402,7 @@ class ControllerService : Service() {
         // The battery arrives in its own report (0x43), not in the state report. Route it
         // first: a battery report is far too short to be parsed as state.
         SteamReportParser.parseBatteryStatus(raw)?.let { battery ->
-            if (_batteryFlow.value != battery.percent) _batteryFlow.value = battery.percent
+            if (_batteryFlow.value != battery) _batteryFlow.value = battery
             return
         }
 
@@ -609,7 +611,7 @@ class ControllerService : Service() {
         val activeProfileName = Prefs.getActiveNamedProfileId(this)?.let { id ->
             Prefs.listNamedProfiles(this).firstOrNull { it.id == id }?.name
         }
-        val baseLine = if (battery != null) "$modeText  •  🔋 $battery%" else modeText
+        val baseLine = if (battery != null) "$modeText  •  🔋 ${battery.describe()}" else modeText
         val text = if (activeProfileName != null) "$baseLine\n🎯 $activeProfileName" else baseLine
 
         // Tap on the notification → open MainActivity
