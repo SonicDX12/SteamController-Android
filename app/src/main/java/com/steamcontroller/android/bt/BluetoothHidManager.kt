@@ -449,7 +449,14 @@ class BluetoothHidManager(private val context: Context) {
             // Lizard mode cannot be turned off through this characteristic. Every shape
             // below was accepted by the GATT write (no error, no status 7) and changed
             // nothing — the controller's mouse device kept emitting REL_X/REL_Y the whole
-            // time, checked with getevent against a live capture:
+            // time.
+            //
+            // Judge this by getevent on the controller's own "Steam Controller Mouse" node,
+            // never by watching the cursor: with "Trackpads as mouse" on, UInputGamepad
+            // drives a cursor too, and the two are indistinguishable on screen. The last
+            // capture separated them cleanly — 2697 REL events from the controller's node,
+            // none from our uinput device, with triggers and bumpers arriving on the
+            // virtual pad as proof the controller was being handled at the time.
             //
             //   [0x01, 0x81, 0x00]                     wrapped   → made it buzz instead
             //   [0x81]                                 raw       → no effect
