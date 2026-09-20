@@ -266,7 +266,7 @@ class ControllerService : Service() {
                 if (conn == null) {
                     Log.v(TAG, "USB rumble skipped: no connection")
                 } else {
-                    SteamHidProtocol.sendRumble(conn, scaledStrong, scaledWeak)
+                    SteamHidProtocol.sendRumble(conn, scaledStrong, scaledWeak, usbManager.endpointOut)
                 }
             }
         }

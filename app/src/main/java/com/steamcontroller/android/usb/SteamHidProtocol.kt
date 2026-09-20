@@ -1,6 +1,7 @@
 package com.steamcontroller.android.usb
 
 import android.hardware.usb.UsbDeviceConnection
+import android.hardware.usb.UsbEndpoint
 import android.util.Log
 import com.steamcontroller.android.protocol.SteamCommands
 
@@ -93,6 +94,25 @@ object SteamHidProtocol {
     }
 
     /** Continuous rumble. Magnitudes are 0..65535; (0, 0) stops. */
-    fun sendRumble(connection: UsbDeviceConnection, strong: Int, weak: Int): Boolean =
-        sendOutput(connection, SteamCommands.rumble(strong, weak))
+    fun sendRumble(
+        connection: UsbDeviceConnection,
+        strong: Int,
+        weak: Int,
+        endpointOut: UsbEndpoint? = null,
+    ): Boolean {
+        val buf = SteamCommands.rumble(strong, weak)
+        // Prefer the interrupt OUT endpoint: this controller refuses SET_REPORT with
+        // report type Output on the control pipe, which is where output reports would
+        // otherwise go. Fall back to control so a device without an OUT endpoint still
+        // gets a try.
+        val ok = if (endpointOut != null) {
+            connection.bulkTransfer(endpointOut, buf, buf.size, TIMEOUT_MS) >= 0
+        } else {
+            sendOutput(connection, buf)
+        }
+        if (!ok) Log.w(TAG, "sendRumble rejected on " +
+            (if (endpointOut != null) "interrupt OUT" else "control") + ": " +
+            buf.joinToString(" ") { "%02x".format(it) })
+        return ok
+    }
 }

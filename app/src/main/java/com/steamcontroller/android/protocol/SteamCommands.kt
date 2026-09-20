@@ -131,10 +131,19 @@ object SteamCommands {
     fun rumble(leftSpeed: Int, rightSpeed: Int): ByteArray {
         val l = leftSpeed.coerceIn(0, 0xFFFF)
         val r = rightSpeed.coerceIn(0, 0xFFFF)
+        // Structure Ibex, pas les deux vitesses nues : le SC2026 attend
+        //   struct steam_ibex_haptic_rumble {
+        //     u8 type; __le16 intensity;
+        //     struct { __le16 speed; u8 gain; } __packed left, right;
+        //   } __packed;            // 9 octets + l'id = 10
+        // Validé sur hardware le 20/09/2026 : vibre, et l'intensité est monotone.
+        // Doit partir sur l'endpoint interrupt OUT — voir SteamHidProtocol.sendRumble.
         return byteArrayOf(
             OUT_HAPTIC_RUMBLE.toByte(),
-            (l and 0xFF).toByte(), ((l shr 8) and 0xFF).toByte(),
-            (r and 0xFF).toByte(), ((r shr 8) and 0xFF).toByte(),
+            0,  // type
+            (maxOf(l, r) and 0xFF).toByte(), ((maxOf(l, r) shr 8) and 0xFF).toByte(),
+            (l and 0xFF).toByte(), ((l shr 8) and 0xFF).toByte(), 0,
+            (r and 0xFF).toByte(), ((r shr 8) and 0xFF).toByte(), 0,
         )
     }
 
