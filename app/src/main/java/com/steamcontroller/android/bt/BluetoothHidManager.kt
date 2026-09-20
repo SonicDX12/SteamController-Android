@@ -165,14 +165,29 @@ class BluetoothHidManager(private val context: Context) {
     /**
      * Rumble over BLE.
      *
-     * Uses the SC1-era 0x8F HAPTIC_PULSE command, NOT OUT_HAPTIC_RUMBLE (0x80).
-     * Switching to 0x80 was tried on real SC2026 hardware (2026-07-12) and produced no
-     * vibration at all, while 0x8F does. The likely reason: 0x80/0x81/0x82 are genuine
-     * USB HID *output* reports, a separate channel from the raw command scheme, and that
-     * channel does not necessarily exist over this vendor GATT characteristic. Do not
-     * retry 0x80 here without first confirming by sniff or log that another characteristic
-     * in the 100f6cb5-be write range is meant for it. (USB rumble is a different story and
-     * does use 0x80 — see SteamHidProtocol.)
+     * Uses 0x8F with the Ibex pulse layout. Four framings were tried on hardware
+     * (2026-09-20, BLE); exactly one produces vibration:
+     *
+     *   [0x8F, side, on_us, off_us, repeat]                       8B   VIBRATES
+     *   [0x8F, 8, pad, dur, interval, count, gain]               10B   nothing
+     *   [0x81, side, on_us, off_us, repeat, gain_i16]            10B   nothing
+     *   [0x80, type, intensity, l_speed, l_gain, r_speed, r_gain] 10B  nothing
+     *
+     * All four were accepted by the GATT write with no error, so "accepted" says nothing
+     * here. The second is the Linux driver's *legacy* framing, which carries a length
+     * byte and a gain; the SC2026 is an Ibex and uses the shorter struct instead —
+     * [id, side, on_us, off_us, repeat_count], no length, no gain. The third and fourth
+     * are the Ibex pulse and rumble report ids from that same driver.
+     *
+     * The consequence is the important part: 0x80/0x81/0x82 are HID *output reports* and
+     * are not routed on this vendor characteristic, so over BLE we reach only the pulse —
+     * which has no amplitude parameter at all. Volume cannot be set on this transport.
+     * Varying the duty cycle changes timbre, not loudness, which is why the intensity
+     * slider has never felt monotonic and why no amount of retuning will fix it.
+     *
+     * The one avenue left is another writable characteristic in the 100f6cb5-be range
+     * carrying the output-report channel; nothing confirms one exists. (USB is a separate
+     * story and does use 0x80 — see SteamHidProtocol.)
      *
      * Payload, after the Linux hid-steam driver's steam_haptic_pulse:
      *   byte 0: command id (0x8F)
