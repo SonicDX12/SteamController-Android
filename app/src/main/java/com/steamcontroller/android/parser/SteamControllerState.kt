@@ -64,24 +64,14 @@ object Buttons {
     const val LB           = 0x00080000
     const val RS_TOUCH     = 0x00100000
     const val TP_RT        = 0x00200000  // right trackpad active (touch or click)
-
-    // UNRESOLVED: bit 0x00400000 has two competing readings and both names below are
-    // the same bit, so only one can be right — settle it in DebugActivity by pressing LT
-    // fully and then hard-pressing the right trackpad, and delete the loser.
-    //
-    //  - TP_RT_CLICK: what the upstream header documents, and it pairs with TP_LT/
-    //    TP_LT_CLICK in byte 5 the same way TP_RT pairs with this one.
-    //  - LT_FULL: suspected empirically while building V2, by symmetry with RT_FULL.
-    //    ButtonMapping exposes it to users as "L2 / LT (full press)", so if this reading
-    //    is wrong that entry fires on a trackpad click instead.
-    const val TP_RT_CLICK  = 0x00400000  // right trackpad hard press (upstream reading)
-    const val LT_FULL      = 0x00400000  // LT full digital press (V2 reading)
+    const val TP_RT_CLICK  = 0x00400000  // right trackpad hard press (physical click)
     const val RT_FULL      = 0x00800000  // RT full digital press
 
     // byte5 (flags)
     const val LS_TOUCH   = 0x01000000
     const val TP_LT      = 0x02000000  // left trackpad active (touch or click)
     const val TP_LT_CLICK= 0x04000000
+    const val LT_FULL    = 0x08000000  // LT full digital press
     const val GRIP_RT    = 0x10000000
     const val GRIP_LT    = 0x20000000
 }

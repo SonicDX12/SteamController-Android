@@ -34,7 +34,9 @@ enum class SteamButton(
     // Trigger full-press = digital bit fired when the analog trigger reaches max travel.
     // The analog 0..32767 value still routes automatically to LT/RT axes on the
     // emulated gamepad — these entries only matter if you remap "fully pulled" to a
-    // different action (e.g. RT-full → A button). LT_FULL bit at 0x400000 is V1.2-empirical.
+    // different action (e.g. RT-full → A button). LT_FULL is byte 5 bit 3, confirmed on
+    // hardware 2026-09-20 (LT at full travel sets it; the upstream header still lists
+    // that bit as TBD). It is NOT 0x400000 — that bit is the right trackpad's click.
     LT     (Buttons.LT_FULL, "L2 / LT (full press)", ButtonCategory.TRIGGERS),
     RT     (Buttons.RT_FULL, "R2 / RT (full press)", ButtonCategory.TRIGGERS),
     LS     (Buttons.LS,      "L3 (stick click)",   ButtonCategory.STICKS),
