@@ -1,4 +1,11 @@
-package com.steamcontroller.android.uinput;
+// NOTE: this interface lives in `ipc`, not `uinput`, on purpose.
+//
+// AGP 8.11+ writes the full aidl command line into a comment at the top of the
+// generated Java. On Windows that path uses backslashes, so a package segment
+// starting with "u" yields the literal text \uinput — and javac treats \u as a
+// unicode escape everywhere in a source file, comments included, so the build
+// fails with "illegal unicode escape". Renaming the segment removes the sequence.
+package com.steamcontroller.android.ipc;
 
 interface IUInputService {
     boolean canCreateDevice();

@@ -53,7 +53,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnGithub"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                style="@style/Widget.Material3Expressive.Button.IconButton.Tonal"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="8dp"
@@ -63,7 +63,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnHelp"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                style="@style/Widget.Material3Expressive.Button.IconButton.Tonal"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:contentDescription="@string/main_help_desc"
@@ -195,7 +195,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnTransportUsb"
-                            style="?attr/materialButtonOutlinedStyle"
+                            style="@style/Widget.Material3Expressive.Button.TonalButton"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
@@ -209,7 +209,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnTransportBt"
-                            style="?attr/materialButtonOutlinedStyle"
+                            style="@style/Widget.Material3Expressive.Button.TonalButton"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
@@ -240,7 +240,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnModeGamepad"
-                            style="?attr/materialButtonOutlinedStyle"
+                            style="@style/Widget.Material3Expressive.Button.TonalButton"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
@@ -252,7 +252,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnModeDesktop"
-                            style="?attr/materialButtonOutlinedStyle"
+                            style="@style/Widget.Material3Expressive.Button.TonalButton"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
@@ -352,7 +352,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnRefreshBt"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                style="@style/Widget.Material3Expressive.Button.IconButton.Tonal"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="10dp"
@@ -371,6 +371,53 @@
             android:textSize="16sp"
             android:textStyle="bold"
             app:cornerRadius="18dp" />
+
+                <!-- Theme selector -->
+        <TextView
+            style="@style/SectionLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Theme"
+            tools:ignore="HardcodedText" />
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggleTheme"
+            style="@style/Widget.Material3Expressive.MaterialButtonGroup.Connected"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnThemeSteam"
+                style="@style/Widget.Material3Expressive.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Steam"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnThemeDynamic"
+                style="@style/Widget.Material3Expressive.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Dynamic"
+                tools:ignore="HardcodedText" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <TextView
+            android:id="@+id/tvThemeHint"
+            style="@style/TextAppearance.Material3.BodySmall"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginBottom="24dp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone"
+            tools:ignore="HardcodedText" />
 
         <!-- ━━━━━━━━━━━━ Action cards (horizontal row) ━━━━━━━━━━━━ -->
         <LinearLayout

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Steam theme — dark scheme. This is the one the app was built around: Steam blue
+  (#66C0F4) on the Steam client's dark navy surfaces (#1B2838 / #2A475E), extended
+  into the tonal roles Expressive needs.
+-->
+<resources>
+    <color name="chip_inactive">#8F98A0</color>
+
+    <!-- Primary -->
+    <color name="md_primary">#66C0F4</color>
+    <color name="md_on_primary">#00344D</color>
+    <color name="md_primary_container">#004C6D</color>
+    <color name="md_on_primary_container">#C2E8FF</color>
+
+    <!-- Secondary -->
+    <color name="md_secondary">#B0C9D8</color>
+    <color name="md_on_secondary">#1B3442</color>
+    <color name="md_secondary_container">#324B5A</color>
+    <color name="md_on_secondary_container">#CCE5F4</color>
+
+    <!-- Tertiary -->
+    <color name="md_tertiary">#C5C0EA</color>
+    <color name="md_on_tertiary">#2D2A4E</color>
+    <color name="md_tertiary_container">#444066</color>
+    <color name="md_on_tertiary_container">#E3DFFF</color>
+
+    <!-- Error -->
+    <color name="md_error">#FFB4AB</color>
+    <color name="md_on_error">#690005</color>
+    <color name="md_error_container">#93000A</color>
+    <color name="md_on_error_container">#FFDAD6</color>
+
+    <!-- Surfaces — Steam navy, stepped for the Expressive container roles -->
+    <color name="md_background">#101A22</color>
+    <color name="md_on_background">#DFE3E7</color>
+    <color name="md_surface">#101A22</color>
+    <color name="md_on_surface">#DFE3E7</color>
+    <color name="md_surface_variant">#3F4A53</color>
+    <color name="md_on_surface_variant">#BFC8D1</color>
+    <color name="md_surface_dim">#101A22</color>
+    <color name="md_surface_bright">#36414A</color>
+    <color name="md_surface_container_lowest">#0B1219</color>
+    <color name="md_surface_container_low">#18232C</color>
+    <color name="md_surface_container">#1B2838</color>
+    <color name="md_surface_container_high">#23333F</color>
+    <color name="md_surface_container_highest">#2A475E</color>
+
+    <!-- Outlines -->
+    <color name="md_outline">#89939C</color>
+    <color name="md_outline_variant">#3F4A53</color>
+
+    <!-- Inverse -->
+    <color name="md_inverse_surface">#DFE3E7</color>
+    <color name="md_inverse_on_surface">#2C3134</color>
+    <color name="md_inverse_primary">#00668B</color>
+</resources>

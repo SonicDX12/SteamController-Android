@@ -1,6 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Steam theme — light scheme.
+
+  A full M3 tonal role set derived from the Steam blue (#66C0F4) as source colour.
+  Expressive leans on roles the old theme never defined (surfaceContainer*, tertiary,
+  outlineVariant); leaving them unset makes the components fall back to Material's
+  default purple, which clashes badly with the Steam palette.
+
+  The dark scheme lives in values-night/colors.xml.
+-->
 <resources>
-    <color name="chip_inactive">#8F98A0</color>
+    <color name="chip_inactive">#70787D</color>
+
+    <!-- Primary -->
+    <color name="md_primary">#00668B</color>
+    <color name="md_on_primary">#FFFFFF</color>
+    <color name="md_primary_container">#C2E8FF</color>
+    <color name="md_on_primary_container">#001E2C</color>
+
+    <!-- Secondary -->
+    <color name="md_secondary">#4D616C</color>
+    <color name="md_on_secondary">#FFFFFF</color>
+    <color name="md_secondary_container">#D0E6F2</color>
+    <color name="md_on_secondary_container">#081E27</color>
+
+    <!-- Tertiary -->
+    <color name="md_tertiary">#5D5B7D</color>
+    <color name="md_on_tertiary">#FFFFFF</color>
+    <color name="md_tertiary_container">#E3DFFF</color>
+    <color name="md_on_tertiary_container">#1A1836</color>
+
+    <!-- Error -->
+    <color name="md_error">#BA1A1A</color>
+    <color name="md_on_error">#FFFFFF</color>
+    <color name="md_error_container">#FFDAD6</color>
+    <color name="md_on_error_container">#410002</color>
+
+    <!-- Surfaces -->
+    <color name="md_background">#F6FAFD</color>
+    <color name="md_on_background">#171C1F</color>
+    <color name="md_surface">#F6FAFD</color>
+    <color name="md_on_surface">#171C1F</color>
+    <color name="md_surface_variant">#DCE4E9</color>
+    <color name="md_on_surface_variant">#40484C</color>
+    <color name="md_surface_dim">#D6DBDF</color>
+    <color name="md_surface_bright">#F6FAFD</color>
+    <color name="md_surface_container_lowest">#FFFFFF</color>
+    <color name="md_surface_container_low">#F0F4F8</color>
+    <color name="md_surface_container">#EAEFF3</color>
+    <color name="md_surface_container_high">#E4E9ED</color>
+    <color name="md_surface_container_highest">#DEE3E8</color>
+
+    <!-- Outlines -->
+    <color name="md_outline">#70787D</color>
+    <color name="md_outline_variant">#C0C8CD</color>
+
+    <!-- Inverse -->
+    <color name="md_inverse_surface">#2C3134</color>
+    <color name="md_inverse_on_surface">#EDF1F5</color>
+    <color name="md_inverse_primary">#66C0F4</color>
 
     <!-- Status pill — connected/active state (green). -->
     <color name="status_connected_container">#1F3A2A</color>

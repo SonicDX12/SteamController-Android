@@ -1,18 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SteamController" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#66C0F4</item>
-        <item name="colorOnPrimary">#000000</item>
-        <item name="colorPrimaryContainer">#2A475E</item>
-        <item name="colorOnPrimaryContainer">#FFFFFF</item>
-        <item name="colorSecondary">#66C0F4</item>
-        <item name="colorOnSecondary">#000000</item>
-        <item name="colorSurface">#1B2838</item>
-        <item name="colorOnSurface">#FFFFFF</item>
-        <item name="colorSurfaceVariant">#2A475E</item>
-        <item name="colorOnSurfaceVariant">#C6D4DF</item>
-        <item name="android:windowBackground">#1B2838</item>
-        <item name="android:statusBarColor">#1B2838</item>
-        <item name="android:navigationBarColor">#1B2838</item>
+    <!--
+      Base theme: Material 3 Expressive.
+
+      Colours come from @color/md_* (values/ = light, values-night/ = dark), so the
+      Steam identity is defined in one place for both schemes.
+
+      The Dynamic theme is NOT a second theme: DynamicColors.applyToActivityIfAvailable()
+      overlays the wallpaper-derived palette on top of this one at Activity creation.
+      See ThemeManager. That keeps a single theme to maintain and means every role
+      defined here has a dynamic counterpart automatically.
+    -->
+    <style name="Theme.SteamController" parent="Theme.Material3Expressive.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/md_primary</item>
+        <item name="colorOnPrimary">@color/md_on_primary</item>
+        <item name="colorPrimaryContainer">@color/md_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/md_on_primary_container</item>
+
+        <item name="colorSecondary">@color/md_secondary</item>
+        <item name="colorOnSecondary">@color/md_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/md_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/md_on_secondary_container</item>
+
+        <item name="colorTertiary">@color/md_tertiary</item>
+        <item name="colorOnTertiary">@color/md_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/md_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/md_on_tertiary_container</item>
+
+        <item name="colorError">@color/md_error</item>
+        <item name="colorOnError">@color/md_on_error</item>
+        <item name="colorErrorContainer">@color/md_error_container</item>
+        <item name="colorOnErrorContainer">@color/md_on_error_container</item>
+
+        <item name="android:colorBackground">@color/md_background</item>
+        <item name="colorOnBackground">@color/md_on_background</item>
+        <item name="colorSurface">@color/md_surface</item>
+        <item name="colorOnSurface">@color/md_on_surface</item>
+        <item name="colorSurfaceVariant">@color/md_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/md_on_surface_variant</item>
+        <item name="colorSurfaceDim">@color/md_surface_dim</item>
+        <item name="colorSurfaceBright">@color/md_surface_bright</item>
+        <item name="colorSurfaceContainerLowest">@color/md_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/md_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/md_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/md_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/md_surface_container_highest</item>
+
+        <item name="colorOutline">@color/md_outline</item>
+        <item name="colorOutlineVariant">@color/md_outline_variant</item>
+
+        <item name="colorSurfaceInverse">@color/md_inverse_surface</item>
+        <item name="colorOnSurfaceInverse">@color/md_inverse_on_surface</item>
+        <item name="colorPrimaryInverse">@color/md_inverse_primary</item>
+
+        <!-- Let the system tint the bars from the theme instead of pinning one colour,
+             so the Dynamic overlay reaches them too. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Expressive section label: the emphasized typescale, used above each group. -->
+    <style name="SectionLabel" parent="TextAppearance.Material3.LabelLarge.Emphasized">
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+
+    <!-- App title, using the emphasized display typescale. -->
+    <style name="AppTitle" parent="TextAppearance.Material3.HeadlineLarge.Emphasized">
+        <item name="android:textColor">?attr/colorPrimary</item>
     </style>
 </resources>

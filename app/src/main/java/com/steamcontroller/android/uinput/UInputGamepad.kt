@@ -1,5 +1,7 @@
 package com.steamcontroller.android.uinput
 
+import com.steamcontroller.android.ipc.IUInputService
+
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection

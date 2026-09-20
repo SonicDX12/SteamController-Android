@@ -42,6 +42,7 @@
     </queries>
 
     <application
+        android:name=".SteamControllerApp"
         android:allowBackup="true"
         android:banner="@drawable/tv_banner"
         android:icon="@drawable/ic_launcher"

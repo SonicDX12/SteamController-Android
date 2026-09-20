@@ -8,6 +8,23 @@ import com.steamcontroller.android.input.StickCalibration
 import com.steamcontroller.android.input.XboxTarget
 import com.steamcontroller.android.uinput.GamepadProfile
 
+/**
+ * Which colour scheme the app runs in.
+ *
+ * STEAM is the built-in palette (Steam blue on Steam navy, light + dark variants in
+ * res/values[-night]/colors.xml). DYNAMIC overlays the wallpaper-derived Material You
+ * palette on top of the same theme — Android 12+ only; below that it silently stays on
+ * STEAM, which is why isAvailable() exists.
+ */
+enum class ThemeMode(val id: Int, val displayName: String) {
+    STEAM(0, "Steam"),
+    DYNAMIC(1, "Dynamic");
+
+    companion object {
+        fun fromId(id: Int) = entries.firstOrNull { it.id == id } ?: STEAM
+    }
+}
+
 enum class Transport(val id: Int, val displayName: String) {
     USB(0, "USB / Puck"),
     BLUETOOTH(1, "Bluetooth");
@@ -38,9 +55,17 @@ object Prefs {
     private const val KEY_TRACKPAD_AS_MOUSE = "trackpad_as_mouse_gamepad"  // sidecar mouse while in Xbox/PS profiles
     private const val KEY_NAMED_PROFILES = "named_profiles_json"
     private const val KEY_ACTIVE_NAMED_PROFILE_ID = "active_named_profile_id"
+    private const val KEY_THEME_MODE = "theme_mode"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+
+    fun getThemeMode(context: Context): ThemeMode =
+        ThemeMode.fromId(prefs(context).getInt(KEY_THEME_MODE, ThemeMode.STEAM.id))
+
+    fun setThemeMode(context: Context, mode: ThemeMode) {
+        prefs(context).edit().putInt(KEY_THEME_MODE, mode.id).apply()
+    }
 
     fun getProfile(context: Context): GamepadProfile {
         val id = prefs(context).getInt(KEY_PROFILE_ID, GamepadProfile.XBOX_360.id)
