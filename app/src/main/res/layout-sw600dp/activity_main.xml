@@ -231,7 +231,7 @@
                             android:layout_marginBottom="14dp"
                             android:fontFamily="monospace"
                             android:text="@string/main_mode_placeholder"
-                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textColor="?attr/colorOnPrimaryContainer"
                             android:textSize="13sp" />
 
                         <View
