@@ -54,4 +54,11 @@
     <color name="md_inverse_surface">#DFE3E7</color>
     <color name="md_inverse_on_surface">#2C3134</color>
     <color name="md_inverse_primary">#00668B</color>
+
+    <!-- Status pill. These were the original values, written when only the dark theme
+         existed; they live here now so the light theme can have its own. -->
+    <color name="status_connected_container">#1F3A2A</color>
+    <color name="status_connected_on_container">#7CD49B</color>
+    <color name="status_idle_container">#3A2A2D</color>
+    <color name="status_idle_on_container">#E5BAB4</color>
 </resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Light theme: the system bars sit on a near-white surface, so their icons must be
+         dark. The night qualifier flips this to false. A bool is used rather than a
+         values-night copy of the theme because a style redefined under a qualifier
+         REPLACES the original outright — the dark theme would lose the whole palette. -->
+    <bool name="light_system_bars">true</bool>
+
+</resources>

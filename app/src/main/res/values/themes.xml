@@ -57,6 +57,13 @@
              so the Dynamic overlay reaches them too. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <!-- Transparent bars mean the system icons draw over our background, so they
+             have to be told which way to contrast. @bool/light_system_bars is true in
+             values/ and false in values-night/. Without this the clock and the wifi and
+             battery icons stay white on a near-white surface and are unreadable. -->
+        <item name="android:windowLightStatusBar">@bool/light_system_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_system_bars</item>
     </style>
 
     <!-- Expressive section label: the emphasized typescale, used above each group. -->

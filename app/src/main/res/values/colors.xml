@@ -61,12 +61,12 @@
     <color name="md_inverse_primary">#66C0F4</color>
 
     <!-- Status pill — connected/active state (green). -->
-    <color name="status_connected_container">#1F3A2A</color>
-    <color name="status_connected_on_container">#7CD49B</color>
+    <color name="status_connected_container">#C4EED3</color>
+    <color name="status_connected_on_container">#07351C</color>
 
-    <!-- Status pill — neutral / idle state matches colorTertiaryContainer of the dark theme. -->
-    <color name="status_idle_container">#3A2A2D</color>
-    <color name="status_idle_on_container">#E5BAB4</color>
+    <!-- Status pill — neutral / idle state, aligned on colorTertiaryContainer. -->
+    <color name="status_idle_container">#E3DFFF</color>
+    <color name="status_idle_on_container">#1A1836</color>
 
     <!-- Classic Xbox 360 face-button colours, used to tint the target chip in MappingActivity rows. -->
     <color name="btn_xbox_a">#5CC04C</color>

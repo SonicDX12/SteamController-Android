@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Dark theme: bars over a dark surface, so their icons stay light. -->
+    <bool name="light_system_bars">false</bool>
+
+</resources>
