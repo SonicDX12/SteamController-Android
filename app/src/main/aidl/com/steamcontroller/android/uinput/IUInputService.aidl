@@ -13,6 +13,9 @@ interface IUInputService {
                    int leftTrigger, int rightTrigger,
                    int dpadX, int dpadY);
 
+    // Desktop / mouse-mode frame. `keys` is a MouseTarget bitmask.
+    void sendMouseFrame(int relX, int relY, int scrollY, int keys);
+
     // Returns [strongMagnitude, weakMagnitude] in 0..65535 if a game triggered rumble,
     // or null if nothing happened since the last poll.
     int[] pollForceFeedback();

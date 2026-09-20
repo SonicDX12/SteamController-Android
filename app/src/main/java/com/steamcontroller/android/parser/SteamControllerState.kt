@@ -63,7 +63,7 @@ object Buttons {
     const val LB           = 0x00080000
     const val RS_TOUCH     = 0x00100000
     const val TP_RT        = 0x00200000  // right trackpad touch
-    // bit 0x00400000 = unused / unknown
+    const val LT_FULL      = 0x00400000  // LT full digital press (empirically suspected — V1.2)
     const val RT_FULL      = 0x00800000  // RT full digital press
 
     // byte5 (flags)

@@ -33,9 +33,12 @@ class HidReportReader(
                             Log.i(TAG, "Reports received: $totalReports, last ID=0x${(buf[0].toInt() and 0xFF).toString(16)}, len=$len")
                         }
                         val raw = buf.copyOf(len)
-                        val state = SteamReportParser.parse(buf)
+                        // Parse `raw` (actual length), not the reused `buf` — short reports like
+                        // the id-0x43 battery status would otherwise pick up stale bytes from a
+                        // previous, longer read past offset `len`.
+                        val state = SteamReportParser.parse(raw)
                         // Always emit raw so DebugActivity shows something even with unexpected IDs
-                        onReport(state ?: SteamReportParser.parseRaw(buf), raw)
+                        onReport(state ?: SteamReportParser.parseRaw(raw), raw)
                     }
                     len == 0 -> yield()
                     else     -> yield()  // -1 = timeout, normal

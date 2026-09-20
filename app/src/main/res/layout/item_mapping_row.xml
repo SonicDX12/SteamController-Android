@@ -1,48 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Row layout V1.2 with Kenney input-prompts icons (CC0).
+  Each side (source SC button, target emulated button) is a FrameLayout containing
+  BOTH an ImageView (icon) AND a TextView (text fallback). Kotlin picks the right
+  one based on whether an icon exists for the value.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
     android:gravity="center_vertical"
+    android:minHeight="60dp"
+    android:orientation="horizontal"
+    android:paddingHorizontal="2dp"
     android:paddingVertical="6dp">
 
-    <!-- Source button "chip" badge -->
-    <TextView
-        android:id="@+id/tvSourceBadge"
-        android:layout_width="44dp"
-        android:layout_height="32dp"
-        android:gravity="center"
-        android:background="@drawable/chip_bg"
-        android:textColor="?attr/colorOnPrimaryContainer"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:fontFamily="monospace"
-        tools:text="A" />
+    <!-- ── Source SC button ─────────────────────────────────────────────── -->
+    <FrameLayout
+        android:id="@+id/sourceBadgeContainer"
+        android:layout_width="36dp"
+        android:layout_height="36dp">
+
+        <ImageView
+            android:id="@+id/ivSourceIcon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/tvSourceBadge"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/mapping_button_circle"
+            android:backgroundTint="@color/btn_neutral"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:textColor="#0E1A22"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="A" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/tvSourceName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="14dp"
         android:textColor="?attr/colorOnSurface"
         android:textSize="14sp"
         tools:text="A" />
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilTarget"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-        android:layout_width="180dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp">
+    <!-- ── Target emulated button ──────────────────────────────────────── -->
+    <FrameLayout
+        android:id="@+id/targetBadgeContainer"
+        android:layout_width="36dp"
+        android:layout_height="36dp">
 
-        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-            android:id="@+id/dropdownTarget"
+        <ImageView
+            android:id="@+id/ivTargetIcon"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="none"
-            tools:ignore="LabelFor" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/tvTargetBadge"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/mapping_button_circle"
+            android:backgroundTint="@color/btn_xbox_a"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:textColor="#0E1A22"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="A" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tvTargetName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:maxWidth="140dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="13sp"
+        tools:text="A" />
+
+    <ImageView
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="4dp"
+        android:src="@drawable/ic_chevron_down"
+        tools:ignore="ContentDescription" />
+
 </LinearLayout>

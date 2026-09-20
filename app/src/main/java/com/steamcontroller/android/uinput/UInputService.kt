@@ -60,6 +60,14 @@ class UInputService : IUInputService.Stub {
         }
     }
 
+    override fun sendMouseFrame(relX: Int, relY: Int, scrollY: Int, keys: Int) {
+        try {
+            UInputNative.sendMouseFrame(relX, relY, scrollY, keys)
+        } catch (t: Throwable) {
+            Log.e(TAG, "sendMouseFrame failed: ${t.message}")
+        }
+    }
+
     override fun pollForceFeedback(): IntArray? {
         return try {
             UInputNative.pollFFEvent()

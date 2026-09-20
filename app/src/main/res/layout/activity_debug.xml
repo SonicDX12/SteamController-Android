@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  DebugActivity (phone) — V1.2 redesign.
+  Sections wrapped in MaterialCardView with circular chips for face/DPAD/stick buttons,
+  bar graphs for analog axes (sticks + trackpads), grouped IMU + raw report at the bottom.
+-->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
@@ -18,10 +24,11 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorSurface"
-            app:title="HID Debug"
+            app:title="@string/debug_title"
             app:titleTextColor="?attr/colorPrimary"
             app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
-            app:navigationIconTint="?attr/colorPrimary" />
+            app:navigationIconTint="?attr/colorPrimary"
+            app:menu="@menu/menu_debug" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
@@ -29,205 +36,295 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
-
-        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
+            android:orientation="vertical"
+            android:padding="16dp">
 
+            <!-- Read-only notice — these chips are live state indicators, not buttons -->
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="HID Debug"
-                android:textColor="#66C0F4"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:text="@string/debug_readonly_notice"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:layout_marginBottom="12dp" />
 
+            <!-- Hz indicator (top-right alignment) -->
             <TextView
                 android:id="@+id/tvReportRate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="end"
                 android:text="0 Hz"
-                android:textColor="#8F98A0"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="13sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="monospace"
+                android:layout_marginBottom="8dp"
+                tools:ignore="HardcodedText" />
+
+            <!-- ━━━━━━━━━━━━ FACE BUTTONS ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_face_buttons" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="10dp">
+
+                        <TextView android:id="@+id/btnA" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_btn_a" />
+                        <TextView android:id="@+id/btnB" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_btn_b" />
+                        <TextView android:id="@+id/btnX" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_btn_x" />
+                        <TextView android:id="@+id/btnY" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_btn_y" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ D-PAD ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_dpad" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="10dp">
+
+                        <TextView android:id="@+id/btnDU" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_dpad_up" />
+                        <TextView android:id="@+id/btnDD" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_dpad_down" />
+                        <TextView android:id="@+id/btnDL" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_dpad_left" />
+                        <TextView android:id="@+id/btnDR" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_dpad_right" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ BUMPERS + SYSTEM ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_bumpers_system" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="10dp">
+
+                        <TextView android:id="@+id/btnLB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_lb" />
+                        <TextView android:id="@+id/btnRB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_rb" />
+                        <TextView android:id="@+id/btnSelect" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_select" />
+                        <TextView android:id="@+id/btnSteam"  style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_steam_glyph" />
+                        <TextView android:id="@+id/btnStart"  style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_start_glyph" />
+                        <TextView android:id="@+id/btnQA"     style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_qa" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ STICKS / PADS clicks ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_sticks_pads" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="10dp">
+
+                        <TextView android:id="@+id/btnLS" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_btn_l3" />
+                        <TextView android:id="@+id/btnRS" style="@style/BtnChipCircle" android:layout_margin="6dp" android:text="@string/debug_btn_r3" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ GRIPS / BACK paddles ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_grips_back" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="10dp">
+
+                        <TextView android:id="@+id/btnLGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_lgrip" />
+                        <TextView android:id="@+id/btnRGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_rgrip" />
+                        <TextView android:id="@+id/btnL4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_l4" />
+                        <TextView android:id="@+id/btnL5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_l5" />
+                        <TextView android:id="@+id/btnR4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_r4" />
+                        <TextView android:id="@+id/btnR5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="@string/debug_btn_r5" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ TRIGGERS ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_triggers_header" />
+
+                    <LinearLayout android:layout_marginTop="10dp"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
+                            <TextView android:text="@string/debug_lt" style="@style/AxisLabel" />
+                            <ProgressBar android:id="@+id/pbLT" style="@style/AxisBar" />
+                            <TextView android:id="@+id/tvLT" style="@style/AxisVal" android:text="0" tools:ignore="HardcodedText" />
+                        </LinearLayout>
+
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
+                            <TextView android:text="@string/debug_rt" style="@style/AxisLabel" />
+                            <ProgressBar android:id="@+id/pbRT" style="@style/AxisBar" />
+                            <TextView android:id="@+id/tvRT" style="@style/AxisVal" android:text="0" tools:ignore="HardcodedText" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ STICKS ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_sticks_header" />
+
+                    <!-- Left stick -->
+                    <TextView android:text="@string/debug_left_x" style="@style/AxisLabel" android:layout_marginTop="10dp" />
+                    <ProgressBar android:id="@+id/pbLSX" style="@style/AxisBar" android:max="65535" />
+                    <TextView android:id="@+id/tvLSX" style="@style/AxisVal" android:text="X: 0" tools:ignore="HardcodedText" />
+
+                    <TextView android:text="@string/debug_left_y" style="@style/AxisLabel" android:layout_marginTop="6dp" />
+                    <ProgressBar android:id="@+id/pbLSY" style="@style/AxisBar" android:max="65535" />
+                    <TextView android:id="@+id/tvLSY" style="@style/AxisVal" android:text="Y: 0" tools:ignore="HardcodedText" />
+
+                    <!-- Right stick -->
+                    <TextView android:text="@string/debug_right_x" style="@style/AxisLabel" android:layout_marginTop="10dp" />
+                    <ProgressBar android:id="@+id/pbRSX" style="@style/AxisBar" android:max="65535" />
+                    <TextView android:id="@+id/tvRSX" style="@style/AxisVal" android:text="X: 0" tools:ignore="HardcodedText" />
+
+                    <TextView android:text="@string/debug_right_y" style="@style/AxisLabel" android:layout_marginTop="6dp" />
+                    <ProgressBar android:id="@+id/pbRSY" style="@style/AxisBar" android:max="65535" />
+                    <TextView android:id="@+id/tvRSY" style="@style/AxisVal" android:text="Y: 0" tools:ignore="HardcodedText" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ TRACKPADS ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_trackpads_header" />
+
+                    <TextView android:text="@string/debug_left_x" style="@style/AxisLabel" android:layout_marginTop="10dp" />
+                    <ProgressBar android:id="@+id/pbLPX" style="@style/AxisBar" android:max="65535" />
+                    <TextView android:id="@+id/tvLPX" style="@style/AxisVal" android:text="X: 0" tools:ignore="HardcodedText" />
+
+                    <TextView android:text="@string/debug_left_y" style="@style/AxisLabel" android:layout_marginTop="6dp" />
+                    <ProgressBar android:id="@+id/pbLPY" style="@style/AxisBar" android:max="65535" />
+                    <TextView android:id="@+id/tvLPY" style="@style/AxisVal" android:text="Y: 0" tools:ignore="HardcodedText" />
+
+                    <TextView android:text="@string/debug_right_x" style="@style/AxisLabel" android:layout_marginTop="10dp" />
+                    <ProgressBar android:id="@+id/pbRPX" style="@style/AxisBar" android:max="65535" />
+                    <TextView android:id="@+id/tvRPX" style="@style/AxisVal" android:text="X: 0" tools:ignore="HardcodedText" />
+
+                    <TextView android:text="@string/debug_right_y" style="@style/AxisLabel" android:layout_marginTop="6dp" />
+                    <ProgressBar android:id="@+id/pbRPY" style="@style/AxisBar" android:max="65535" />
+                    <TextView android:id="@+id/tvRPY" style="@style/AxisVal" android:text="Y: 0" tools:ignore="HardcodedText" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ IMU QUATERNION ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_imu_quaternion" />
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginTop="10dp">
+                        <TextView android:id="@+id/tvQW" style="@style/AxisValFull" android:text="qW:    0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvQX" style="@style/AxisValFull" android:text="qX:    0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvQY" style="@style/AxisValFull" android:text="qY:    0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvQZ" style="@style/AxisValFull" android:text="qZ:    0" tools:ignore="HardcodedText" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ━━━━━━━━━━━━ RAW HEX REPORT ━━━━━━━━━━━━ -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/DebugCard"
+                android:layout_marginBottom="24dp">
+
+                <LinearLayout android:orientation="vertical" android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_raw_report" />
+
+                    <TextView
+                        android:id="@+id/tvRawHex"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="—"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="10sp"
+                        android:fontFamily="monospace"
+                        android:lineSpacingExtra="2dp"
+                        tools:ignore="HardcodedText" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
-
-        <!-- Boutons face -->
-        <TextView style="@style/SectionHeader" android:text="FACE BUTTONS" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="8dp">
-
-            <TextView android:id="@+id/btnA" style="@style/BtnChip" android:layout_margin="4dp" android:text="A" />
-            <TextView android:id="@+id/btnB" style="@style/BtnChip" android:layout_margin="4dp" android:text="B" />
-            <TextView android:id="@+id/btnX" style="@style/BtnChip" android:layout_margin="4dp" android:text="X" />
-            <TextView android:id="@+id/btnY" style="@style/BtnChip" android:layout_margin="4dp" android:text="Y" />
-        </LinearLayout>
-
-        <!-- Bumpers / Système -->
-        <TextView style="@style/SectionHeader" android:text="BUMPERS / SYSTEM" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="8dp">
-
-            <TextView android:id="@+id/btnLB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="LB" />
-            <TextView android:id="@+id/btnRB"     style="@style/BtnChip" android:layout_margin="4dp" android:text="RB" />
-            <TextView android:id="@+id/btnSelect" style="@style/BtnChip" android:layout_margin="4dp" android:text="SEL" />
-            <TextView android:id="@+id/btnSteam"  style="@style/BtnChip" android:layout_margin="4dp" android:text="☰" />
-            <TextView android:id="@+id/btnStart"  style="@style/BtnChip" android:layout_margin="4dp" android:text="START" />
-            <TextView android:id="@+id/btnQA"     style="@style/BtnChip" android:layout_margin="4dp" android:text="QA" />
-        </LinearLayout>
-
-        <!-- D-Pad -->
-        <TextView style="@style/SectionHeader" android:text="D-PAD" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="8dp">
-
-            <TextView android:id="@+id/btnDU" style="@style/BtnChip" android:layout_margin="4dp" android:text="▲" />
-            <TextView android:id="@+id/btnDD" style="@style/BtnChip" android:layout_margin="4dp" android:text="▼" />
-            <TextView android:id="@+id/btnDL" style="@style/BtnChip" android:layout_margin="4dp" android:text="◀" />
-            <TextView android:id="@+id/btnDR" style="@style/BtnChip" android:layout_margin="4dp" android:text="▶" />
-        </LinearLayout>
-
-        <!-- Sticks / Trackpads -->
-        <TextView style="@style/SectionHeader" android:text="STICKS / PADS" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="8dp">
-
-            <TextView android:id="@+id/btnLS"    style="@style/BtnChip" android:layout_margin="4dp" android:text="L3" />
-            <TextView android:id="@+id/btnRS"    style="@style/BtnChip" android:layout_margin="4dp" android:text="R3" />
-        </LinearLayout>
-
-        <!-- Grips and back buttons -->
-        <TextView style="@style/SectionHeader" android:text="GRIPS / BACK" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="8dp">
-
-            <TextView android:id="@+id/btnLGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="LGrip" />
-            <TextView android:id="@+id/btnRGrip" style="@style/BtnChip" android:layout_margin="4dp" android:text="RGrip" />
-            <TextView android:id="@+id/btnL4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="L4" />
-            <TextView android:id="@+id/btnL5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="L5" />
-            <TextView android:id="@+id/btnR4"    style="@style/BtnChip" android:layout_margin="4dp" android:text="R4" />
-            <TextView android:id="@+id/btnR5"    style="@style/BtnChip" android:layout_margin="4dp" android:text="R5" />
-        </LinearLayout>
-
-        <!-- Triggers -->
-        <TextView style="@style/SectionHeader" android:text="TRIGGERS (0–255)" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
-                <TextView android:text="LT" style="@style/AxisLabel" />
-                <ProgressBar android:id="@+id/pbLT" style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent" android:layout_height="12dp"
-                    android:max="255" android:progressTint="#66C0F4" />
-                <TextView android:id="@+id/tvLT" style="@style/AxisVal" android:text="0" />
-            </LinearLayout>
-
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
-                <TextView android:text="RT" style="@style/AxisLabel" />
-                <ProgressBar android:id="@+id/pbRT" style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent" android:layout_height="12dp"
-                    android:max="255" android:progressTint="#66C0F4" />
-                <TextView android:id="@+id/tvRT" style="@style/AxisVal" android:text="0" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- Left Stick -->
-        <TextView style="@style/SectionHeader" android:text="LEFT STICK" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginBottom="8dp">
-            <TextView android:id="@+id/tvLSX" style="@style/AxisValFull" android:text="X:     0" />
-            <TextView android:id="@+id/tvLSY" style="@style/AxisValFull" android:text="Y:     0" />
-        </LinearLayout>
-
-        <!-- Right Stick -->
-        <TextView style="@style/SectionHeader" android:text="RIGHT STICK" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginBottom="8dp">
-            <TextView android:id="@+id/tvRSX" style="@style/AxisValFull" android:text="X:     0" />
-            <TextView android:id="@+id/tvRSY" style="@style/AxisValFull" android:text="Y:     0" />
-        </LinearLayout>
-
-        <!-- Left Trackpad -->
-        <TextView style="@style/SectionHeader" android:text="LEFT TRACKPAD" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginBottom="8dp">
-            <TextView android:id="@+id/tvLPX" style="@style/AxisValFull" android:text="X:     0" />
-            <TextView android:id="@+id/tvLPY" style="@style/AxisValFull" android:text="Y:     0" />
-        </LinearLayout>
-
-        <!-- Right Trackpad -->
-        <TextView style="@style/SectionHeader" android:text="RIGHT TRACKPAD" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginBottom="8dp">
-            <TextView android:id="@+id/tvRPX" style="@style/AxisValFull" android:text="X:     0" />
-            <TextView android:id="@+id/tvRPY" style="@style/AxisValFull" android:text="Y:     0" />
-        </LinearLayout>
-
-        <!-- IMU quaternion -->
-        <TextView style="@style/SectionHeader" android:text="IMU QUATERNION" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginBottom="8dp">
-            <TextView android:id="@+id/tvQW" style="@style/AxisValFull" android:text="qW:    0" />
-            <TextView android:id="@+id/tvQX" style="@style/AxisValFull" android:text="qX:    0" />
-            <TextView android:id="@+id/tvQY" style="@style/AxisValFull" android:text="qY:    0" />
-            <TextView android:id="@+id/tvQZ" style="@style/AxisValFull" android:text="qZ:    0" />
-        </LinearLayout>
-
-        <!-- Raw hex dump -->
-        <TextView style="@style/SectionHeader" android:text="RAW REPORT (hex)" />
-        <TextView
-            android:id="@+id/tvRawHex"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="—"
-            android:textColor="#8F98A0"
-            android:textSize="10sp"
-            android:fontFamily="monospace"
-            android:lineSpacingExtra="2dp"
-            android:layout_marginBottom="32dp" />
-
-    </LinearLayout>
     </ScrollView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

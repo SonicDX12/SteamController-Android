@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Steam Input — sc_lt.svg (left trigger). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp" android:height="36dp"
+    android:viewportWidth="32" android:viewportHeight="32">
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M2.68006,19.2964C3.69148,26.5787 9.91784,32 17.27,32C25.4052,32 32,25.4052 32,17.27V4.44444L0,0L2.68006,19.2964Z" />
+    <path android:fillColor="#0E141B"
+        android:pathData="M16.9909,20.4444H10.8931V11.7333H13.046V18.5031H16.9909V20.4444Z" />
+    <path android:fillColor="#0E141B"
+        android:pathData="M21.8074,20.4444H19.6545V13.5751H17.1158V11.7333H24.346V13.5751H21.8074V20.4444Z" />
+</vector>

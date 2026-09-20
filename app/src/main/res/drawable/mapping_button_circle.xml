@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Circular button background used by the MappingActivity rows for both the SC source
+  chip and the emulated-target chip. Colour is set in code via setBackgroundTintList
+  / DrawableCompat so the same shape covers Xbox face colours, neutral, etc.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#FFFFFF" />
+    <size android:width="36dp" android:height="36dp" />
+</shape>

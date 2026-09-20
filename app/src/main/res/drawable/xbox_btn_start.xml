@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Steam Input — xbox_button_start.svg (Xbox One Menu = 3 horizontal bars). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp" android:height="36dp"
+    android:viewportWidth="32" android:viewportHeight="32">
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M30.5,17.2083H1.5V14.7916H30.5V17.2083Z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M30.5,7.54167H1.5V5.125H30.5V7.54167Z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M30.5,26.875H1.5V24.4584H30.5V26.875Z" />
+</vector>

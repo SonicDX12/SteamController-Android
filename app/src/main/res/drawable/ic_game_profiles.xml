@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Game Profiles icon — stacked cards (representing saved profile list)
+  with a small star marker to suggest "named / favourite presets".
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <!-- Back card -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M5,4h14a2,2 0 0,1 2,2v2H3V6A2,2 0 0,1 5,4z" />
+    <!-- Middle card -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.7"
+        android:pathData="M4,9h16a1,1 0 0,1 1,1v2H3v-2A1,1 0 0,1 4,9z" />
+    <!-- Front card with gamepad outline -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M5,13h14a2,2 0 0,1 2,2v4a2,2 0 0,1 -2,2H5a2,2 0 0,1 -2,-2v-4A2,2 0 0,1 5,13zM8,17m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0M16,17m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0" />
+</vector>

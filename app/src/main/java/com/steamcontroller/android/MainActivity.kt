@@ -8,12 +8,14 @@ import android.Manifest
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Filter
+import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -34,8 +36,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var serviceRunning = false
     private var pairedBtDevices: List<BluetoothDevice> = emptyList()
+    // Tracks whether the current "started" session has reached a working injection mode.
+    // Used so the modeFlow observer doesn't mistake StateFlow's initial NONE replay for
+    // an external service stop right after the user pressed Start.
+    private var hasSeenActiveMode = false
 
     private val usbPermissionAction = "com.steamcontroller.android.USB_PERMISSION"
+    private val githubRepoUrl = "https://github.com/SonicDX12/SteamController-Android"
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -110,8 +117,13 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, MappingActivity::class.java))
         }
 
+        binding.btnGameProfiles.setOnClickListener {
+            startActivity(Intent(this, ProfilesActivity::class.java))
+        }
+
         setupTransportDropdown()
-        setupProfileDropdown()
+        setupControlModeToggle()
+        setupGamepadVariantRadios()
         requestNotificationPermissionIfNeeded()
 
         binding.btnRefreshBt.setOnClickListener {
@@ -120,16 +132,33 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnHelp.setOnClickListener { showConnectionHelpDialog() }
+        binding.btnGithub.setOnClickListener { openGithubRepo() }
 
         // Observe injection mode changes from the service.
         // Also detect the service being stopped externally (e.g. via the notification action)
         // and re-sync MainActivity's UI state so the button flips back to "Start".
+        //
+        // Subtlety: a fresh `collect` on a StateFlow immediately replays its current value,
+        // which is `NONE` when no service ever ran. If the user taps Start *before* that
+        // initial replay runs on the Main thread, we'd see `mode==NONE && serviceRunning==true`
+        // and incorrectly reset the button back to "Start". `hasSeenActiveMode` defends
+        // against that — we only treat a NONE as "service stopped" once we've previously
+        // observed a working mode in this session.
         lifecycleScope.launch {
             ControllerService.modeFlow.collect { mode ->
                 refreshModeLabel()
 
-                if (mode == ControllerService.InjectionMode.NONE && serviceRunning) {
+                if (mode != ControllerService.InjectionMode.NONE) {
+                    hasSeenActiveMode = true
+                    // Catch-up sync: activity re-entered while service was already running.
+                    // Without this, the toggle button stays "Start" even though the service is live.
+                    if (!serviceRunning) {
+                        serviceRunning = true
+                        binding.btnToggleService.text = getString(R.string.btn_stop)
+                    }
+                } else if (serviceRunning && hasSeenActiveMode) {
                     serviceRunning = false
+                    hasSeenActiveMode = false
                     updateStatus(connected = false)
                     binding.btnToggleService.text = getString(R.string.btn_start)
                     log("Service stopped")
@@ -143,7 +172,7 @@ class MainActivity : AppCompatActivity() {
             ControllerService.profileFlow.collect { profileId ->
                 if (profileId == null) return@collect
                 val profile = com.steamcontroller.android.uinput.GamepadProfile.fromId(profileId)
-                binding.dropdownProfile.setText(profile.displayName, false)
+                syncControlModeToggle(profile)
                 refreshModeLabel()
             }
         }
@@ -152,6 +181,15 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             ControllerService.batteryFlow.collect { pct ->
                 binding.tvBattery.text = if (pct == null) "Battery: —" else "Battery: $pct%"
+            }
+        }
+
+        // Observe real connection state — `stateFlow` only carries a non-null value
+        // once at least one HID frame has been parsed from the controller. That's the
+        // signal we trust for "controller actually plugged in / paired and streaming".
+        lifecycleScope.launch {
+            ControllerService.stateFlow.collect { state ->
+                updateStatus(connected = state != null)
             }
         }
 
@@ -191,6 +229,11 @@ class MainActivity : AppCompatActivity() {
             if (picked == Prefs.getTransport(this)) return@addOnButtonCheckedListener  // no-op
             Prefs.setTransport(this, picked)
             updateBtPickerVisibility(picked)
+            // Status pill shows the active transport — refresh on change
+            updateShizukuStatus(
+                Shizuku.pingBinder() &&
+                Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
+            )
             log("Transport set: ${picked.displayName}")
             if (serviceRunning) {
                 Toast.makeText(this, "Restart the service to apply", Toast.LENGTH_SHORT).show()
@@ -245,9 +288,10 @@ class MainActivity : AppCompatActivity() {
             log("No Steam Controller paired — pair via Android Bluetooth settings first")
             return
         }
+        // Show just the friendly name — the MAC address took an extra wrapped line
+        // and the user never types it manually. Address is still saved to Prefs.
         val labels = pairedBtDevices.map { dev ->
-            val name = try { dev.name } catch (_: SecurityException) { null } ?: "Unknown"
-            "$name  •  ${dev.address}"
+            try { dev.name } catch (_: SecurityException) { null } ?: "Unknown"
         }
         binding.dropdownBtDevice.setAdapter(nonFilteringAdapter(labels))
         binding.dropdownBtDevice.threshold = 0
@@ -325,23 +369,106 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupProfileDropdown() {
-        val profiles = GamepadProfile.values()
-        val names = profiles.map { it.displayName }
+    /**
+     * Control Mode toggle (Gamepad ↔ Desktop). Replaces the 5-profile dropdown.
+     * Desktop ⇔ GamepadProfile.MOUSE. Gamepad ⇔ the user's last-chosen gamepad
+     * profile (defaults to Xbox 360 on first run). Fine-grained sub-choice
+     * (Xbox 360 vs One vs DS4 vs DualSense) lands in the Profiles panel (Phase 2).
+     */
+    private fun setupControlModeToggle() {
+        syncControlModeToggle(Prefs.getProfile(this))
 
-        binding.dropdownProfile.setAdapter(nonFilteringAdapter(names))
-        binding.dropdownProfile.threshold = 0
-
-        val current = Prefs.getProfile(this)
-        binding.dropdownProfile.setText(current.displayName, false)
-
-        binding.dropdownProfile.setOnItemClickListener { _, _, position, _ ->
-            val picked = profiles[position]
+        binding.toggleControlMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val picked = when (checkedId) {
+                R.id.btnModeGamepad -> Prefs.getLastGamepadProfile(this)
+                R.id.btnModeDesktop -> GamepadProfile.MOUSE
+                else -> return@addOnButtonCheckedListener
+            }
+            if (picked.id == Prefs.getProfile(this).id) {
+                // No profile change, but the user still clicked — re-sync visibility
+                // in case the section was out of sync (e.g. service not running so
+                // profileFlow won't re-emit).
+                syncControlModeToggle(picked)
+                return@addOnButtonCheckedListener
+            }
             Prefs.setProfile(this, picked)
-            log("Profile set: ${picked.displayName}")
+            // Drive visibility + radio sync directly so the gamepad-variant section
+            // hides immediately when the user picks Desktop, even when no service
+            // is running (profileFlow only emits with the service alive).
+            syncControlModeToggle(picked)
+            log("Control mode → ${picked.displayName}")
             if (serviceRunning) {
                 Toast.makeText(this, "Restart the service to apply", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    /** Programmatically sync the Gamepad/Desktop toggle to the given profile (no re-emit feedback loop). */
+    private fun syncControlModeToggle(profile: GamepadProfile) {
+        val targetId = if (profile.isMouseMode) R.id.btnModeDesktop else R.id.btnModeGamepad
+        if (binding.toggleControlMode.checkedButtonId != targetId) {
+            binding.toggleControlMode.check(targetId)
+        }
+        // Show/hide the gamepad-variant radios and select the right one.
+        binding.gamepadVariantSection?.visibility =
+            if (profile.isMouseMode) View.GONE else View.VISIBLE
+        if (!profile.isMouseMode) syncGamepadVariant(profile)
+    }
+
+    /**
+     * Wires the 4 Xbox/PS radio buttons, split across two RadioGroups (2 per row)
+     * since a single RadioGroup can't lay out a 2×2 grid — it only auto-manages
+     * mutual exclusion among its own *direct* children (nested ViewGroups don't
+     * count), so a flat 2-column arrangement forces two separate groups. Each
+     * group still gets native exclusion + accessibility semantics ("radio button
+     * 1 of 2") within its row; the two rows are cross-cleared manually so only
+     * one of the 4 is ever checked at a time.
+     */
+    private fun setupGamepadVariantRadios() {
+        val radioToProfile = mapOf(
+            R.id.rbXbox360    to GamepadProfile.XBOX_360,
+            R.id.rbXboxOne    to GamepadProfile.XBOX_ONE,
+            R.id.rbDualShock4 to GamepadProfile.DUALSHOCK_4,
+            R.id.rbDualSense  to GamepadProfile.DUALSENSE,
+        )
+        val row1 = binding.radioGroupGamepadRow1
+        val row2 = binding.radioGroupGamepadRow2
+
+        fun onRowChecked(checkedId: Int, otherRow: RadioGroup?) {
+            val picked = radioToProfile[checkedId] ?: return
+            otherRow?.clearCheck()
+            if (picked.id == Prefs.getProfile(this).id) return
+            Prefs.setProfile(this, picked)
+            log("Emulated controller → ${picked.displayName}")
+            if (serviceRunning) {
+                Toast.makeText(this, "Restart the service to apply", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        row1?.setOnCheckedChangeListener { _, checkedId ->
+            if (checkedId != View.NO_ID) onRowChecked(checkedId, row2)
+        }
+        row2?.setOnCheckedChangeListener { _, checkedId ->
+            if (checkedId != View.NO_ID) onRowChecked(checkedId, row1)
+        }
+        // Initial check based on current pref.
+        syncGamepadVariant(Prefs.getProfile(this).takeUnless { it.isMouseMode } ?: Prefs.getLastGamepadProfile(this))
+    }
+
+    /** Set the right radio to `checked = true` without triggering its listener side-effects. */
+    private fun syncGamepadVariant(profile: GamepadProfile) {
+        binding.rbXbox360?.isChecked    = (profile == GamepadProfile.XBOX_360)
+        binding.rbXboxOne?.isChecked    = (profile == GamepadProfile.XBOX_ONE)
+        binding.rbDualShock4?.isChecked = (profile == GamepadProfile.DUALSHOCK_4)
+        binding.rbDualSense?.isChecked  = (profile == GamepadProfile.DUALSENSE)
+    }
+
+    private fun openGithubRepo() {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(githubRepoUrl)))
+        } catch (t: Throwable) {
+            Toast.makeText(this, "No browser app found", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -372,7 +499,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, ControllerService::class.java)
         startForegroundService(intent)
         serviceRunning = true
-        updateStatus(connected = true)
+        // Don't fake "connected" here — stateFlow will flip it once a real HID frame lands.
         binding.btnToggleService.text = getString(R.string.btn_stop)
         log("Service started (Bluetooth)")
     }
@@ -414,7 +541,7 @@ class MainActivity : AppCompatActivity() {
         }
         startForegroundService(intent)
         serviceRunning = true
-        updateStatus(connected = true)
+        // Pill colour + status text flip when stateFlow emits the first parsed HID frame.
         binding.btnToggleService.text = getString(R.string.btn_stop)
         log("Service started")
     }
@@ -425,17 +552,40 @@ class MainActivity : AppCompatActivity() {
         }
         startService(intent)
         serviceRunning = false
+        hasSeenActiveMode = false
         updateStatus(connected = false)
         binding.btnToggleService.text = getString(R.string.btn_start)
         log("Service stopped")
     }
 
     private fun updateShizukuStatus(ok: Boolean) {
-        binding.tvShizukuStatus.text = if (ok) "Shizuku: ready" else "Shizuku: not ready"
+        val transport = Prefs.getTransport(this).displayName
+        binding.tvShizukuStatus.text = if (ok)
+            "Shizuku: ready  •  $transport"
+        else
+            "Shizuku: not ready  •  $transport"
     }
 
+    /**
+     * Drives both the bottom-of-card "Controller: ..." label AND the top status pill colour.
+     * The pill flips to a green tint as soon as HID frames are actually flowing, which is
+     * a much more honest signal than "the user pressed Start".
+     */
     private fun updateStatus(connected: Boolean) {
-        binding.tvControllerStatus.text = if (connected) "Controller: active" else "Controller: disconnected"
+        binding.tvControllerStatus.text = if (connected) "Controller: Ready" else "Controller: disconnected"
+
+        val containerColor = if (connected)
+            ContextCompat.getColor(this, R.color.status_connected_container)
+        else
+            ContextCompat.getColor(this, R.color.status_idle_container)
+        val textColor = if (connected)
+            ContextCompat.getColor(this, R.color.status_connected_on_container)
+        else
+            ContextCompat.getColor(this, R.color.status_idle_on_container)
+
+        // statusPillCard only exists in the phone layout; sw600dp/TV use a different layout.
+        binding.statusPillCard?.setCardBackgroundColor(containerColor)
+        binding.tvShizukuStatus.setTextColor(textColor)
     }
 
     private fun log(msg: String) {
@@ -450,8 +600,8 @@ class MainActivity : AppCompatActivity() {
         updateShizukuStatus(Shizuku.pingBinder() &&
             Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED)
 
-        // Sync the profile dropdown — it may have been changed from the notification while paused
-        binding.dropdownProfile.setText(Prefs.getProfile(this).displayName, false)
+        // Sync Control Mode toggle — profile may have changed from the notification while paused
+        syncControlModeToggle(Prefs.getProfile(this))
     }
 
     override fun onDestroy() {

@@ -4,7 +4,7 @@
     <style name="SectionHeader">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">#8F98A0</item>
+        <item name="android:textColor">@color/chip_inactive</item>
         <item name="android:textSize">10sp</item>
         <item name="android:letterSpacing">0.1</item>
         <item name="android:layout_marginTop">12dp</item>
@@ -19,7 +19,7 @@
         <item name="android:paddingTop">5dp</item>
         <item name="android:paddingBottom">5dp</item>
         <item name="android:background">@drawable/chip_bg</item>
-        <item name="android:textColor">#8F98A0</item>
+        <item name="android:textColor">@color/chip_inactive</item>
         <item name="android:textSize">12sp</item>
         <item name="android:fontFamily">monospace</item>
         <item name="android:textStyle">bold</item>
@@ -28,7 +28,7 @@
     <style name="AxisLabel">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">#8F98A0</item>
+        <item name="android:textColor">@color/chip_inactive</item>
         <item name="android:textSize">11sp</item>
         <item name="android:layout_marginBottom">2dp</item>
     </style>
@@ -36,7 +36,7 @@
     <style name="AxisVal">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">#C6D4DF</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
         <item name="android:textSize">11sp</item>
         <item name="android:fontFamily">monospace</item>
         <item name="android:layout_marginTop">2dp</item>
@@ -64,9 +64,49 @@
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_weight">1</item>
-        <item name="android:textColor">#C6D4DF</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
         <item name="android:textSize">11sp</item>
         <item name="android:fontFamily">monospace</item>
+    </style>
+
+    <!-- V1.2 — circular chip for face buttons / DPAD / stick clicks. -->
+    <style name="BtnChipCircle">
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:background">@drawable/chip_circle_bg</item>
+        <item name="android:textColor">@color/chip_inactive</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- V1.2 — taller bar graph row used for stick / trackpad / trigger axes.
+         Combines a horizontal ProgressBar with a monospace value label. -->
+    <style name="AxisBar" parent="Widget.AppCompat.ProgressBar.Horizontal">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">10dp</item>
+        <item name="android:max">255</item>
+        <item name="android:progressTint">?attr/colorPrimary</item>
+    </style>
+
+    <!-- V1.2 DebugActivity — common section card. -->
+    <style name="DebugCard" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="cardCornerRadius">18dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">?attr/colorOutlineVariant</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="DebugSectionTitle" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:letterSpacing">0.18</item>
     </style>
 
 </resources>

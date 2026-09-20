@@ -2,11 +2,36 @@ package com.steamcontroller.android.parser
 
 import android.util.Log
 
+/**
+ * Dedicated battery/charge report (id 0x43, "TritonBatteryStatus_t").
+ * percent is already 0-100 (no scaling needed, unlike the legacy guess in the
+ * 0x45 state report). chargeState: 1=discharging, 2=charging, 4=charging done.
+ * Source: github.com/ddeverill/SteamlessController ControllerManager.cpp
+ * (`buf[0]==REPORT_BATTERY_STATUS` → `buf[1]`=percent, `buf[2]`=chargeState).
+ */
+data class BatteryStatus(val percent: Int, val chargeState: Int)
+
 object SteamReportParser {
 
     private const val TAG = "SteamReportParser"
     private const val EXPECTED_REPORT_ID = 0x45
     private const val MIN_REPORT_LEN = 40
+    private const val REPORT_BATTERY_STATUS = 0x43
+
+    /**
+     * Parses report id 0x43 if present. USB carries the id as report[0]; BLE
+     * strips report IDs on notify, so BluetoothHidManager re-prepends 0x43 to
+     * short (2-byte) vendor-char payloads before they reach this parser — see
+     * its onCharacteristicChanged. Returns null for any other report.
+     */
+    fun parseBatteryStatus(report: ByteArray): BatteryStatus? {
+        if (report.size < 3) return null
+        if ((report[0].toInt() and 0xFF) != REPORT_BATTERY_STATUS) return null
+        return BatteryStatus(
+            percent = report[1].toInt() and 0xFF,
+            chargeState = report[2].toInt() and 0xFF
+        )
+    }
 
     fun parse(report: ByteArray): SteamControllerState? {
         if (report.size < MIN_REPORT_LEN) return null

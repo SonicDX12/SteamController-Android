@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="chip_inactive">#8F98A0</color>
+
+    <!-- Status pill — connected/active state (green). -->
+    <color name="status_connected_container">#1F3A2A</color>
+    <color name="status_connected_on_container">#7CD49B</color>
+
+    <!-- Status pill — neutral / idle state matches colorTertiaryContainer of the dark theme. -->
+    <color name="status_idle_container">#3A2A2D</color>
+    <color name="status_idle_on_container">#E5BAB4</color>
+
+    <!-- Classic Xbox 360 face-button colours, used to tint the target chip in MappingActivity rows. -->
+    <color name="btn_xbox_a">#5CC04C</color>
+    <color name="btn_xbox_b">#E6432A</color>
+    <color name="btn_xbox_x">#3FB2EA</color>
+    <color name="btn_xbox_y">#F5C518</color>
+    <!-- Neutral grey for non-face targets (bumpers, sticks, system) and the SC source chip. -->
+    <color name="btn_neutral">#E8E8E8</color>
+    <color name="btn_neutral_dark">#5A6F7A</color>
 </resources>

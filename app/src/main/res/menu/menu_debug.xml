@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- "Log to File" placeholder — writes the current raw report stream to a file (V1.2.x). -->
+    <item
+        android:id="@+id/action_log_to_file"
+        android:title="@string/menu_log_to_file"
+        app:showAsAction="always" />
+</menu>
