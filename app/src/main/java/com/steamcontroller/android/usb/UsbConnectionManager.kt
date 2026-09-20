@@ -15,6 +15,17 @@ class UsbConnectionManager(private val context: Context) {
     var endpointIn: UsbEndpoint? = null
         private set
 
+    /**
+     * Interrupt OUT endpoint, when the interface exposes one.
+     *
+     * HID *output* reports belong here rather than on the control pipe. SET_REPORT with
+     * report type Output is refused by this controller (controlTransfer returns < 0),
+     * while the same call with report type Feature is accepted — which is why lizard mode
+     * works over control and rumble does not.
+     */
+    var endpointOut: UsbEndpoint? = null
+        private set
+
     companion object {
         private const val TAG = "UsbConnectionManager"
         const val STEAM_VID = 0x28DE
@@ -48,6 +59,9 @@ class UsbConnectionManager(private val context: Context) {
         device = dev
         connection = conn
         endpointIn = ep
+        endpointOut = findOutEndpoint(iface)
+        Log.i(TAG, "Interrupt OUT endpoint: " +
+            (endpointOut?.let { "0x${it.address.toString(16)}" } ?: "none"))
         Log.i(TAG, "Connected — PID=0x${dev.productId.toString(16).uppercase()} iface=${iface.id} ep=${ep.address} type=${ep.type}")
         return true
     }
@@ -103,10 +117,23 @@ class UsbConnectionManager(private val context: Context) {
             device = null
             connection = null
             endpointIn = null
+            endpointOut = null
         }
     }
 
     val isConnected get() = connection != null
+
+    private fun findOutEndpoint(iface: UsbInterface): UsbEndpoint? {
+        for (i in 0 until iface.endpointCount) {
+            val ep = iface.getEndpoint(i)
+            if (ep.direction == UsbConstants.USB_DIR_OUT &&
+                (ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK ||
+                 ep.type == UsbConstants.USB_ENDPOINT_XFER_INT)) {
+                return ep
+            }
+        }
+        return null
+    }
 
     private fun findInEndpoint(iface: UsbInterface): UsbEndpoint? {
         for (i in 0 until iface.endpointCount) {

@@ -280,7 +280,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- ━━━━━━━━━━━━ IMU QUATERNION ━━━━━━━━━━━━ -->
+            <!-- ━━━━━━━━━━━━ IMU ACCEL / GYRO ━━━━━━━━━━━━ -->
             <com.google.android.material.card.MaterialCardView
                 style="@style/DebugCard"
                 android:layout_marginBottom="12dp">
@@ -288,14 +288,23 @@
                 <LinearLayout android:orientation="vertical" android:padding="16dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
 
-                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_imu_quaternion" />
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_imu_accelerometer" />
 
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:layout_marginTop="10dp">
-                        <TextView android:id="@+id/tvQW" style="@style/AxisValFull" android:text="qW:    0" tools:ignore="HardcodedText" />
-                        <TextView android:id="@+id/tvQX" style="@style/AxisValFull" android:text="qX:    0" tools:ignore="HardcodedText" />
-                        <TextView android:id="@+id/tvQY" style="@style/AxisValFull" android:text="qY:    0" tools:ignore="HardcodedText" />
-                        <TextView android:id="@+id/tvQZ" style="@style/AxisValFull" android:text="qZ:    0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvAX" style="@style/AxisValFull" android:text="aX:     0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvAY" style="@style/AxisValFull" android:text="aY:     0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvAZ" style="@style/AxisValFull" android:text="aZ:     0" tools:ignore="HardcodedText" />
+                    </LinearLayout>
+
+                    <TextView style="@style/DebugSectionTitle" android:text="@string/debug_imu_gyroscope"
+                        android:layout_marginTop="14dp" />
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginTop="10dp">
+                        <TextView android:id="@+id/tvGX" style="@style/AxisValFull" android:text="gX:     0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvGY" style="@style/AxisValFull" android:text="gY:     0" tools:ignore="HardcodedText" />
+                        <TextView android:id="@+id/tvGZ" style="@style/AxisValFull" android:text="gZ:     0" tools:ignore="HardcodedText" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

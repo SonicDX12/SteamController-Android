@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.content.Context
 import android.util.Log
+import com.steamcontroller.android.parser.SteamReportParser
+import com.steamcontroller.android.protocol.SteamCommands
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -32,8 +34,23 @@ class BluetoothHidManager(private val context: Context) {
 
         val NAME_HINTS = listOf("Steam Ctrl", "Steam Controller", "SteamController", "Valve")
 
-        private val DISABLE_LIZARD = byteArrayOf(0x85.toByte())
         private const val DESIRED_MTU = 100
+
+        /** Bounded so a rumble backlog cannot build up behind the BLE link. */
+        private const val MAX_QUEUED_WRITES = 8
+
+        /**
+         * Vendor characteristic carrying the battery level over BLE, pinned from a
+         * hardware logcat capture (2026-07-12): 14-byte payloads where byte[1] holds
+         * steady (0x5d = 93) across samples taken seconds apart, while every other byte
+         * fluctuates like a counter or checksum.
+         *
+         * 100f6c79 is NOT it, despite looking like a status char: its 5-byte payloads
+         * alternate "01 02 00 00 00" / "00 02 00 00 00" in lockstep with our own
+         * heartbeat writes, so it is an ack ping-pong tied to writes.
+         */
+        private const val VALVE_BATTERY_CHAR: Long = 0x100f6c78L
+        private const val VALVE_BATTERY_REPORT_LEN = 14
     }
 
     private enum class State { IDLE, CONNECTING, MTU_REQUESTED, DISCOVERING, SUBSCRIBING, READY }
@@ -48,7 +65,9 @@ class BluetoothHidManager(private val context: Context) {
     private var subsIndex = 0
 
     @Volatile private var state: State = State.IDLE
-    private val heartbeatBusy = AtomicBoolean(false)
+
+    private val writeQueue = ArrayDeque<Pair<ByteArray, Int>>()
+    private val writeInFlight = AtomicBoolean(false)
 
     private var onReport: ((ByteArray) -> Unit)? = null
     private var onConnectionChange: ((Boolean) -> Unit)? = null
@@ -92,99 +111,133 @@ class BluetoothHidManager(private val context: Context) {
             pendingSubs.clear()
             subsIndex = 0
             state = State.IDLE
+            synchronized(writeQueue) { writeQueue.clear() }
+            writeInFlight.set(false)
             onConnectionChange?.invoke(false)
         }
     }
 
     /**
-     * Send a rumble command to the controller.
-     * Magnitudes are Android FF values (0..65535) — strong = left motor, weak = right.
+     * Queue a payload for the feature-write characteristic.
      *
-     * REVERTED (2026-07-12): tried switching to OUT_HAPTIC_RUMBLE (0x80), the "modern"
-     * continuous-haptic output report documented by github.com/ddeverill/SteamlessController
-     * (SteamController.cpp SendRumbleOutput). On real SC2026 hardware over this BLE
-     * characteristic it produced NO vibration at all, while this 0x8F pulse format DOES
-     * (confirmed on hardware, feel not yet tuned). Likely explanation: 0x80/0x81/0x82 are
-     * only valid as genuine USB HID *output* reports (a separate report channel from the
-     * feature-report/raw-command scheme), which doesn't necessarily exist as a raw
-     * writable command over this vendor GATT characteristic. 0x8F is the older SC1-style
-     * direct command (hid-steam.c HAPTIC_PULSE) which the SC2026 firmware apparently still
-     * honors here. Do not retry 0x80 without first confirming (via hardware log/sniff)
-     * that a *different* characteristic in the 100f6cb5-be write range is meant for it.
-     *
-     * Payload format inspired by the Linux `hid-steam` driver (steam_haptic_pulse):
-     *   byte 0: command id (0x8F = HAPTIC_PULSE)
-     *   byte 1: pad id (0 = left, 1 = right)
-     *   bytes 2-3: high period (u16 LE, microseconds — actuator ON time per cycle)
-     *   bytes 4-5: low period  (u16 LE, microseconds — actuator OFF time per cycle)
-     *   bytes 6-7: repeat count (u16 LE, 0xFFFF for continuous)
-     *
-     * Magnitude is encoded by the ratio high/low, repeated continuously (repeat=0xFFFF):
-     *   magnitude 0xFFFF → high=2000us, low=1000us  (~66% duty, full strength)
-     *   magnitude 0x0000 → explicit stop (repeat=0)
+     * GATT allows exactly one outstanding write per connection: issuing a second one
+     * before onCharacteristicWrite lands silently drops it. Every command therefore goes
+     * through this queue, which is drained one write per callback. The queue is bounded —
+     * rumble updates arrive faster than BLE can carry them, and a backlog is worse than a
+     * dropped frame, so the oldest entries are discarded when it fills.
      */
-    fun sendRumble(strong: Int, weak: Int) {
+    private fun enqueueWrite(
+        payload: ByteArray,
+        writeType: Int = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
+    ) {
         if (state != State.READY) return
-        val ch = featureWriteChar ?: return
-        val g = gatt ?: return
+        synchronized(writeQueue) {
+            while (writeQueue.size >= MAX_QUEUED_WRITES) writeQueue.removeFirst()
+            writeQueue.addLast(payload to writeType)
+        }
+        pumpWriteQueue()
+    }
 
-        // Send left then right. WRITE_NO_RESPONSE so they don't queue up acks.
-        for (payload in listOf(magnitudeToPayload(0, strong), magnitudeToPayload(1, weak))) {
-            try {
-                ch.value = payload
-                ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-                g.writeCharacteristic(ch)
-            } catch (t: Throwable) {
-                Log.w(TAG, "rumble write failed: ${t.message}")
+    private fun pumpWriteQueue() {
+        val g = gatt ?: return
+        val ch = featureWriteChar ?: return
+        if (!writeInFlight.compareAndSet(false, true)) return
+        val next = synchronized(writeQueue) { writeQueue.removeFirstOrNull() }
+        if (next == null) {
+            writeInFlight.set(false)
+            return
+        }
+        val (payload, writeType) = next
+        try {
+            ch.value = payload
+            ch.writeType = writeType
+            if (!g.writeCharacteristic(ch)) {
+                Log.v(TAG, "writeCharacteristic returned false, dropping payload")
+                writeInFlight.set(false)
+                pumpWriteQueue()
             }
+        } catch (t: Throwable) {
+            Log.w(TAG, "write failed: ${t.message}")
+            writeInFlight.set(false)
         }
     }
 
-    private fun magnitudeToPayload(padId: Int, magnitude: Int): ByteArray {
+    /**
+     * Rumble over BLE.
+     *
+     * Uses 0x8F with the Ibex pulse layout. Four framings were tried on hardware
+     * (2026-09-20, BLE); exactly one produces vibration:
+     *
+     *   [0x8F, side, on_us, off_us, repeat]                       8B   VIBRATES
+     *   [0x8F, 8, pad, dur, interval, count, gain]               10B   nothing
+     *   [0x81, side, on_us, off_us, repeat, gain_i16]            10B   nothing
+     *   [0x80, type, intensity, l_speed, l_gain, r_speed, r_gain] 10B  nothing
+     *
+     * All four were accepted by the GATT write with no error, so "accepted" says nothing
+     * here. The second is the Linux driver's *legacy* framing, which carries a length
+     * byte and a gain; the SC2026 is an Ibex and uses the shorter struct instead —
+     * [id, side, on_us, off_us, repeat_count], no length, no gain. The third and fourth
+     * are the Ibex pulse and rumble report ids from that same driver.
+     *
+     * The consequence is the important part: 0x80/0x81/0x82 are HID *output reports* and
+     * are not routed on this vendor characteristic, so over BLE we reach only the pulse —
+     * which has no amplitude parameter at all. Volume cannot be set on this transport.
+     * Varying the duty cycle changes timbre, not loudness, which is why the intensity
+     * slider has never felt monotonic and why no amount of retuning will fix it.
+     *
+     * The one avenue left is another writable characteristic in the 100f6cb5-be range
+     * carrying the output-report channel; nothing confirms one exists. (USB is a separate
+     * story and does use 0x80 — see SteamHidProtocol.)
+     *
+     * Payload, after the Linux hid-steam driver's steam_haptic_pulse:
+     *   byte 0: command id (0x8F)
+     *   byte 1: pad id (0 = left, 1 = right)
+     *   bytes 2-3: high period (u16 LE, microseconds — actuator ON time per cycle)
+     *   bytes 4-5: low period  (u16 LE, microseconds — actuator OFF per cycle)
+     *   bytes 6-7: repeat count (u16 LE, 0xFFFF = continuous, 0 = stop)
+     *
+     * The two pad writes go through the queue rather than back to back: GATT carries one
+     * write at a time, so the second was previously being dropped, leaving only one
+     * actuator running — which may well be part of why the rumble measured "too weak"
+     * through the tuning rounds below.
+     */
+    fun sendRumble(strong: Int, weak: Int) {
+        enqueueWrite(pulsePayload(0, strong), BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+        enqueueWrite(pulsePayload(1, weak), BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+    }
+
+    private fun pulsePayload(padId: Int, magnitude: Int): ByteArray {
         val mag = magnitude.coerceIn(0, 0xFFFF)
         if (mag == 0) {
-            // BUG FIX (2026-07-12): this used to return null here and sendRumble() would
-            // bail out without writing anything at all, on the assumption that "the
-            // controller will stop on its own once the previous pulse's repeat count
-            // expires". Confirmed wrong on hardware — a repeat=1 pulse from the branch
-            // below just buzzes continuously, and the calibration screen's "Test rumble"
-            // button had no way to ever stop it (magnitude 0 was silently skipped).
-            // Explicit stop: repeat=0 to cancel any in-flight pulse train.
+            // Explicit stop. This used to return null and skip the write entirely, on the
+            // assumption the controller would stop once the pulse train expired. Wrong on
+            // hardware: a repeat=1 pulse just buzzes on, and "Test rumble" had no way to
+            // stop it. repeat=0 cancels any train in flight.
             return byteArrayOf(0x8F.toByte(), padId.toByte(), 0, 0, 0, 0, 0, 0)
         }
-        // FIX (2026-07-12): the previous mapping kept lowPeriod fixed at 1000us and only
-        // scaled highPeriod (100-2000us), which changes the pulse *frequency* across the
-        // magnitude range (from ~1/(100+1000)=909Hz at low magnitude down to
-        // 1/(2000+1000)=333Hz at max). LRA actuators (used in the Steam Controller's
-        // haptics) only move significantly near their mechanical resonant frequency —
-        // typically ~170-200Hz for this class of actuator — so most of that range was
-        // driving well off-resonance, which loses amplitude independently of duty cycle.
-        // Now the cycle period is held ~constant near resonance and only the duty cycle
-        // (high/low ratio) varies with magnitude, which is the correct lever for perceived
-        // intensity on a fixed-frequency drive. Exact resonant frequency is unconfirmed for
-        // the SC2026 (no datasheet) — retune totalPeriodUs if this still feels off.
+        // Hold the cycle period near the actuator's resonance and vary only duty cycle.
+        // An earlier mapping scaled the high period against a fixed 1000us low period,
+        // which swept the drive frequency from ~909Hz down to ~333Hz across the magnitude
+        // range; LRAs only move meaningfully near resonance, so most of that range was
+        // off-resonance and lost amplitude regardless of duty.
         //
-        // ROUND 2 (2026-07-12): still too weak at 182Hz/88% max duty. Two changes together
-        // (confounds the next test, but each is independently well-motivated and cheap to
-        // back out if needed): nudged the frequency down to ~160Hz (period 6250us — some
-        // LRAs used in game controllers resonate lower than 182Hz), and pushed max duty
-        // from 88% to 97% (near-continuous drive at full magnitude — 0x8F's on/off pulse
-        // model may just have a firmness ceiling below what a "big motor spins" rumble
-        // feels like; 97% duty is close to that ceiling for this command).
+        // Second tuning round: 182Hz at 88% max duty still felt weak, so the period moved
+        // to ~160Hz and max duty to 97%. Both were changed together, which confounds the
+        // next measurement — back either out independently if needed. The SC2026's actual
+        // resonant frequency is unconfirmed (no datasheet); retune totalPeriodUs if it
+        // still feels off.
         val totalPeriodUs = 6250  // ~160Hz
         val minDutyPct = 25
         val maxDutyPct = 97
         val dutyPct = minDutyPct + (mag * (maxDutyPct - minDutyPct) / 0xFFFF)
         val highPeriod = (totalPeriodUs * dutyPct / 100).coerceIn(1, totalPeriodUs - 1)
         val lowPeriod = totalPeriodUs - highPeriod
-        // FIX (2026-07-12): was hardcoded to 1 — a single ~2-3ms pulse per send, repeated
-        // only every 50-200ms by ControllerService.forwardRumble's throttle, so the motor
-        // sat idle >95% of the time. Confirmed on hardware: felt too weak. 0xFFFF matches
-        // our own documented protocol ("repeat count, 0xFFFF for continuous") — the pulse
-        // now cycles continuously between sends instead of firing one brief blip.
+        // Continuous, not a single pulse: at repeat=1 the motor fired one ~2-3ms blip per
+        // send and ControllerService throttles sends to every 50-200ms, so it sat idle
+        // over 95% of the time. Confirmed too weak on hardware.
         val repeat = 0xFFFF
         return byteArrayOf(
-            0x8F.toByte(),                       // command id (HAPTIC_PULSE)
+            0x8F.toByte(),
             padId.toByte(),
             (highPeriod and 0xFF).toByte(), (highPeriod shr 8 and 0xFF).toByte(),
             (lowPeriod and 0xFF).toByte(),  (lowPeriod shr 8 and 0xFF).toByte(),
@@ -192,23 +245,51 @@ class BluetoothHidManager(private val context: Context) {
         )
     }
 
+    /**
+     * Lizard-mode keepalive — DISABLED over BLE, deliberately.
+     *
+     * Dropping the 64-byte padding got these writes accepted (no more GATT status 7), and
+     * the firmware promptly started buzzing continuously: it is reading the buffer as
+     * something else entirely. That makes sense next to the one format known to work on
+     * this characteristic, V2's haptic pulse, which is [0x8F, padId, args...] — command id
+     * in byte 0, no feature-report wrapper and no size byte. Our [0x01, 0x81, 0x00] puts
+     * 0x01 in the command slot, and 0x81 — OUT_HAPTIC_PULSE — right behind it.
+     *
+     * So the vendor characteristic is a raw command channel, not a HID feature-report one,
+     * and the encapsulation upstream documents (which it drives over HID-over-GATT on
+     * Windows) does not apply here. Sending nothing is the safe state: the firmware simply
+     * stays in lizard mode, which is where it already was — the bare 0x85 V2 sent is
+     * SET_DEFAULT_MAPPINGS, i.e. lizard ON.
+     *
+     * Next thing to try, one write at a time with a finger ready on the power button:
+     * [0x81] alone, then [0x87, size, key, lo, hi, ...] for the trackpad settings.
+     */
     fun sendHeartbeat() {
-        if (state != State.READY) return
-        val g = gatt ?: return
-        val ch = featureWriteChar ?: return
-        if (!heartbeatBusy.compareAndSet(false, true)) return  // previous heartbeat not yet acked
-        try {
-            ch.value = DISABLE_LIZARD
-            ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            val ok = g.writeCharacteristic(ch)
-            if (!ok) {
-                heartbeatBusy.set(false)
-                Log.v(TAG, "heartbeat skipped: writeCharacteristic returned false")
-            }
-        } catch (t: Throwable) {
-            heartbeatBusy.set(false)
-            Log.w(TAG, "heartbeat write failed: ${t.message}")
-        }
+        // Intentionally empty until the raw command format is confirmed on hardware.
+    }
+
+    /**
+     * Silence any haptic pulse train left running on the controller.
+     *
+     * A pulse sent with repeat=0xFFFF runs until something cancels it, and a malformed
+     * write can start one, so the controller can be found already buzzing at connect time.
+     * repeat=0 on both pads clears it.
+     */
+    fun stopAllHaptics() {
+        enqueueWrite(pulsePayload(0, 0), BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+        enqueueWrite(pulsePayload(1, 0), BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+    }
+
+    /** Enable or disable the raw accel/gyro block in the state report. */
+    fun setImuEnabled(enabled: Boolean) {
+        enqueueWrite(SteamCommands.setImuMode(enabled))
+    }
+
+    /** Hand the controller back to its firmware emulation. Call before disconnecting. */
+    fun restoreLizardMode() {
+        // Nothing to restore: we never took the controller out of lizard mode over BLE.
+        // Do stop the motors, though — leaving them running would outlive the app.
+        stopAllHaptics()
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -241,6 +322,8 @@ class BluetoothHidManager(private val context: Context) {
                     pendingSubs.clear()
                     subsIndex = 0
                     state = State.IDLE
+                    synchronized(writeQueue) { writeQueue.clear() }
+                    writeInFlight.set(false)
                 }
             }
         }
@@ -313,8 +396,9 @@ class BluetoothHidManager(private val context: Context) {
             ch: BluetoothGattCharacteristic,
             status: Int
         ) {
-            heartbeatBusy.set(false)
             if (status != 0) Log.w(TAG, "Write ${ch.uuid} failed: status=$status")
+            writeInFlight.set(false)
+            pumpWriteQueue()
         }
 
         private var reportCounter = 0
@@ -324,27 +408,30 @@ class BluetoothHidManager(private val context: Context) {
         ) {
             val data = ch.value ?: return
             reportCounter++
+            // BLE strips the HID report ID, so re-attach it before the parsers see the
+            // data and they can work on the same shape they do over USB. Anything we
+            // cannot identify is forwarded untouched, and logged so it can be identified.
             val short = shortUuid(ch.uuid)
-            // BLE strips the HID Report ID prefix; prepend it back to reuse the USB parser.
-            // State reports (>=40 bytes) get 0x45.
-            //
-            // Confirmed on hardware (2026-07-12 logcat capture) — two distinct short reports,
-            // neither matching the 2-byte guess originally assumed here:
-            //  - 100f6c78, 14 bytes, e.g. "01 5d ff 0f 2c 10 00 00 00 00 00 00 14 75": byte[1]
-            //    (0x5d = 93) stays constant across samples seconds apart while every other
-            //    byte fluctuates (counter/checksum) — almost certainly the battery percent.
-            //    Re-prefixed as 0x43 to reuse SteamReportParser.parseBatteryStatus.
-            //  - 100f6c79, 5 bytes, alternating "01 02 00 00 00" / "00 02 00 00 00" in
-            //    lockstep with our 800ms heartbeat write — an ack/status ping-pong tied to
-            //    writes, NOT battery. Forwarded as-is (unparsed).
             val toForward: ByteArray = when {
                 data.size >= 40 -> {
                     val withId = ByteArray(data.size + 1)
-                    withId[0] = 0x45
+                    withId[0] = SteamReportParser.REPORT_STATE.toByte()
                     System.arraycopy(data, 0, withId, 1, data.size)
                     withId
                 }
-                short == 0x100f6c78L && data.size == 14 -> byteArrayOf(0x43.toByte(), data[1], 0x00)
+                // Synthesise a 0x43 report from the vendor battery char. The payload order
+                // has to match what parseBatteryStatus expects — [chargeState, percent] —
+                // and this characteristic carries no charge state, so it goes out as 0
+                // (unknown) rather than inventing one.
+                short == VALVE_BATTERY_CHAR && data.size == VALVE_BATTERY_REPORT_LEN -> {
+                    // byte[0] is the charge state and byte[1] the percent — the same
+                    // [chargeState, percent] order the 0x43 report uses, confirmed on
+                    // hardware while charging (04 64 = CHARGING_DONE at 100%). The rest is
+                    // still unidentified, so log the payload whole.
+                    Log.i(TAG, "Battery report: ${data.joinToString(" ") { "%02x".format(it) }}" +
+                        " → percent=${data[1].toInt() and 0xFF}")
+                    byteArrayOf(SteamReportParser.REPORT_BATTERY_STATUS.toByte(), data[0], data[1])
+                }
                 else -> {
                     Log.v(TAG, "Unrecognized short report (${data.size}B) from ${ch.uuid}: " +
                         data.joinToString(" ") { "%02x".format(it) })
@@ -363,16 +450,44 @@ class BluetoothHidManager(private val context: Context) {
         if (subsIndex >= pendingSubs.size) {
             // All subscriptions done — send disable lizard mode
             Log.i(TAG, "All ${pendingSubs.size} subscriptions complete, sending disable lizard")
-            val ch = featureWriteChar
             state = State.READY
-            if (ch == null) {
+            if (featureWriteChar == null) {
                 Log.w(TAG, "No feature write char; skipping disable lizard")
                 return
             }
-            ch.value = DISABLE_LIZARD
-            ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            val ok = g.writeCharacteristic(ch)
-            Log.i(TAG, "Disable lizard write: $ok")
+            // Clear any haptic left running from a previous session or a bad write.
+            stopAllHaptics()
+
+            // There is nothing to disable over BLE: the controller never sends HID
+            // reports on this transport at all. Measured on 28de:1303 (bus 0005), the
+            // HOGP nodes Android creates for it, across three phases:
+            //
+            //   fresh BLE connection, service never started   0 events
+            //   service running, controller provably in hand  0 events
+            //   service stopped, lizard explicitly restored   0 events
+            //
+            // The middle phase is the one that counts — our virtual pad took 26 BTN_TL,
+            // 24 BTN_TR and 123 trigger events over the same window, so the controller
+            // was being worked the whole time while its own nodes stayed silent. It
+            // advertises the profiles (BATTERY,Hogp; a Mouse and a Keyboard node both
+            // exist) and emits on neither.
+            //
+            // So the cursor that drove this whole investigation was always ours, from
+            // the trackpad mouse mode — 1545 REL events on our uinput node in that same
+            // phase. Nothing to send, nothing to forbid, and no reason to keep probing
+            // this characteristic for a lizard command.
+            //
+            // The keepalive therefore stays empty over BLE by choice, not as a fallback.
+            //
+            // USB is a separate story and also needs no fix: claimInterface(force = true)
+            // detaches the kernel driver from the controller's single HID interface, so
+            // its nodes stop existing at service start — 5637 events before, none after.
+            //
+            // One probe result survives from the earlier attempts, judged by feel:
+            // [0x01, 0x81, 0x00] makes the controller buzz, which puts 0x81
+            // (OUT_HAPTIC_PULSE) in the command slot. The byte after the report id is
+            // read as the command here, so the wrapped USB feature-report envelope does
+            // not apply to this characteristic.
             return
         }
 
