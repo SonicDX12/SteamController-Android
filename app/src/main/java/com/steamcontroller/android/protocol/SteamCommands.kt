@@ -139,6 +139,25 @@ object SteamCommands {
     }
 
     /**
+     * A command for the BLE vendor characteristic: [cmd | args...], nothing else.
+     *
+     * That channel is not the HID feature-report channel, so none of the wrapping above
+     * applies to it — no report id, no size byte, no padding. The one format confirmed to
+     * work there is the haptic pulse, [0x8F, padId, u16, u16, u16], which is the command
+     * space the Linux hid-steam driver uses (ID_TRIGGER_HAPTIC_PULSE = 0x8F). In that same
+     * space 0x81 clears the digital mappings, which is what takes the controller out of
+     * lizard mode.
+     *
+     * Mind the collision: the upstream header also defines OUT_HAPTIC_PULSE as 0x81, but
+     * that belongs to the Triton output-report space, a different set of ids entirely.
+     */
+    fun rawCommand(cmd: Int, vararg args: Int): ByteArray =
+        ByteArray(args.size + 1).also { buf ->
+            buf[0] = cmd.toByte()
+            args.forEachIndexed { i, v -> buf[i + 1] = v.toByte() }
+        }
+
+    /**
      * The firmware silently reverts to lizard mode after a spell without host feature
      * reports, so the lizard-off state has to be re-asserted periodically. Upstream uses
      * a 2s cadence; we match it (the old 800ms was needlessly chatty).

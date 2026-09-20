@@ -442,6 +442,32 @@ class BluetoothHidManager(private val context: Context) {
             }
             // Clear any haptic left running from a previous session or a bad write.
             stopAllHaptics()
+
+            // PROBE: single write, not a loop — if this one turns out to mean something
+            // other than "clear the digital mappings", one buzz is recoverable and a
+            // keepalive of them is not. Promote it into sendHeartbeat() once confirmed.
+            // Lizard mode cannot be turned off through this characteristic. Every shape
+            // below was accepted by the GATT write (no error, no status 7) and changed
+            // nothing — the controller's mouse device kept emitting REL_X/REL_Y the whole
+            // time, checked with getevent against a live capture:
+            //
+            //   [0x01, 0x81, 0x00]                     wrapped   → made it buzz instead
+            //   [0x81]                                 raw       → no effect
+            //   [0x81, 0x00]                           raw + len → no effect
+            //   [0x87, 0x07,0,0, 0x08,0,0]             settings  → no effect
+            //
+            // The last one is the interesting failure: CLEAR_DIGITAL_MAPPINGS only drops
+            // button-to-key mappings, while the moving cursor comes from the trackpads'
+            // mouse mode, a setting — so that probe was aimed at the right thing and still
+            // did nothing. A write being accepted here evidently does not mean it was
+            // understood.
+            //
+            // Remaining approach, not attempted yet: stop Android from consuming the
+            // controller's HID reports rather than stopping the controller from sending
+            // them. Shell UID holds BLUETOOTH_PRIVILEGED (verified on this device), so the
+            // Shizuku user service could call the hidden
+            // BluetoothHidHost.setConnectionPolicy(device, CONNECTION_POLICY_FORBIDDEN)
+            // and restore it on stop.
             return
         }
 
