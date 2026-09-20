@@ -96,7 +96,8 @@
     <string name="debug_trackpads_header">TRACKPADS (raw ±32767)</string>
     <string name="debug_left_trackpad">LEFT TRACKPAD</string>
     <string name="debug_right_trackpad">RIGHT TRACKPAD</string>
-    <string name="debug_imu_quaternion">IMU QUATERNION</string>
+    <string name="debug_imu_accelerometer">IMU ACCELEROMETER</string>
+    <string name="debug_imu_gyroscope">IMU GYROSCOPE</string>
     <string name="debug_raw_report">RAW REPORT (hex)</string>
     <string name="debug_btn_a">A</string>
     <string name="debug_btn_b">B</string>

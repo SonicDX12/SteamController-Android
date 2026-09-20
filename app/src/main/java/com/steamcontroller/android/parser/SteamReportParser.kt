@@ -2,41 +2,28 @@ package com.steamcontroller.android.parser
 
 import android.util.Log
 
-/**
- * Dedicated battery/charge report (id 0x43, "TritonBatteryStatus_t").
- * percent is already 0-100 (no scaling needed, unlike the legacy guess in the
- * 0x45 state report). chargeState: 1=discharging, 2=charging, 4=charging done.
- * Source: github.com/ddeverill/SteamlessController ControllerManager.cpp
- * (`buf[0]==REPORT_BATTERY_STATUS` → `buf[1]`=percent, `buf[2]`=chargeState).
- */
-data class BatteryStatus(val percent: Int, val chargeState: Int)
-
 object SteamReportParser {
 
     private const val TAG = "SteamReportParser"
-    private const val EXPECTED_REPORT_ID = 0x45
-    private const val MIN_REPORT_LEN = 40
-    private const val REPORT_BATTERY_STATUS = 0x43
 
-    /**
-     * Parses report id 0x43 if present. USB carries the id as report[0]; BLE
-     * strips report IDs on notify, so BluetoothHidManager re-prepends 0x43 to
-     * short (2-byte) vendor-char payloads before they reach this parser — see
-     * its onCharacteristicChanged. Returns null for any other report.
-     */
-    fun parseBatteryStatus(report: ByteArray): BatteryStatus? {
-        if (report.size < 3) return null
-        if ((report[0].toInt() and 0xFF) != REPORT_BATTERY_STATUS) return null
-        return BatteryStatus(
-            percent = report[1].toInt() and 0xFF,
-            chargeState = report[2].toInt() and 0xFF
-        )
-    }
+    // Input report IDs (device → host)
+    const val REPORT_STATE = 0x45           // current firmware
+    const val REPORT_STATE_LEGACY = 0x42    // pre-update firmware, identical layout
+    const val REPORT_BATTERY_STATUS = 0x43  // [chargeState, percent]
+    const val REPORT_STATUS = 0x44          // 5 bytes, connection status
+
+    private const val MIN_REPORT_LEN = 40
+
+    /** True for any report ID that carries controller state. */
+    fun isStateReportId(id: Int) = id == REPORT_STATE || id == REPORT_STATE_LEGACY
+
+    // The IMU block spans bytes 30-45, so the report must be at least 46 bytes to hold it.
+    private const val IMU_REPORT_LEN = 46
 
     fun parse(report: ByteArray): SteamControllerState? {
         if (report.size < MIN_REPORT_LEN) return null
         val id = report[0].toInt() and 0xFF
-        if (id != EXPECTED_REPORT_ID) {
+        if (!isStateReportId(id)) {
             Log.v(TAG, "Unexpected report ID: 0x${id.toString(16)}")
         }
         return doParse(report)
@@ -47,6 +34,26 @@ object SteamReportParser {
         return doParse(report)
     }
 
+    /**
+     * Parse a battery status report (0x43, "TritonBatteryStatus_t"). Returns null if
+     * this isn't one.
+     *
+     * Payload is [chargeState, percent] on every transport (wired, dongle and BLE), and
+     * percent is already 0-100 — no scaling. Upstream originally assumed the opposite
+     * order and corrected it after reading 1/92 and 1/91 off a dongle: a constant 1
+     * (DISCHARGING) followed by the real level. See ControllerManager.cpp.
+     *
+     * USB carries the id as report[0]; BLE strips report IDs on notify, so
+     * BluetoothHidManager re-prepends it from the characteristic the report arrived on.
+     */
+    fun parseBatteryStatus(report: ByteArray): BatteryStatus? {
+        if (report.size < 3) return null
+        if ((report[0].toInt() and 0xFF) != REPORT_BATTERY_STATUS) return null
+        val chargeState = report[1].toInt() and 0xFF
+        val percent = (report[2].toInt() and 0xFF).coerceIn(0, 100)
+        return BatteryStatus(chargeState, percent)
+    }
+
     private fun doParse(report: ByteArray): SteamControllerState {
         // byte[1] = sequence counter (rolling 0-255), ignored
         // buttons span bytes 2-5 (4 bytes = 32 bits)
@@ -54,6 +61,12 @@ object SteamReportParser {
                       ((report[3].toInt() and 0xFF) shl 8) or
                       ((report[4].toInt() and 0xFF) shl 16) or
                       ((report[5].toInt() and 0xFF) shl 24)
+
+        // The IMU block is only appended when raw accel/gyro output has been enabled
+        // (SETTING_IMU_MODE = IMU_MODE_RAW_ACCEL_GYRO). Without it the report stops
+        // short and bytes 30+ are absent or padding — reading them yields garbage,
+        // which is exactly how the old code mistook gyro Z for a battery level.
+        val hasImu = report.size >= IMU_REPORT_LEN
 
         return SteamControllerState(
             buttons      = buttons,
@@ -69,15 +82,14 @@ object SteamReportParser {
             rightPadX    = readInt16LE(report, 24),
             rightPadY    = readInt16LE(report, 26),
             rightPadContact = readUInt16LE(report, 28),
-            quatW        = readInt16LE(report, 32),
-            quatX        = readInt16LE(report, 34),
-            quatY        = readInt16LE(report, 36),
-            quatZ        = readInt16LE(report, 38),
-            // Battery at bytes 44-45 is only valid on FULL USB state reports (≥54 bytes incl. 0x45 prefix).
-            // On BLE the report is truncated to ~46 bytes (after prefix) and bytes 44-45 fall in
-            // the gyro-rest / pad-contact zone instead — reading there gives spurious 0/0xFFFF.
-            // The actual BLE battery is in a separate 5-byte status report from char 100f6c79 (TODO).
-            battery      = if (report.size >= 54) readUInt16LE(report, 44) else -1
+            imuValid     = hasImu,
+            imuTimestamp = if (hasImu) readUInt32LE(report, 30) else 0,
+            accelX       = if (hasImu) readInt16LE(report, 34) else 0,
+            accelY       = if (hasImu) readInt16LE(report, 36) else 0,
+            accelZ       = if (hasImu) readInt16LE(report, 38) else 0,
+            gyroX        = if (hasImu) readInt16LE(report, 40) else 0,
+            gyroY        = if (hasImu) readInt16LE(report, 42) else 0,
+            gyroZ        = if (hasImu) readInt16LE(report, 44) else 0,
         )
     }
 
@@ -91,5 +103,12 @@ object SteamReportParser {
         val lo = buf[offset].toInt() and 0xFF
         val hi = buf[offset + 1].toInt() and 0xFF
         return (hi shl 8) or lo
+    }
+
+    private fun readUInt32LE(buf: ByteArray, offset: Int): Int {
+        return (buf[offset].toInt() and 0xFF) or
+               ((buf[offset + 1].toInt() and 0xFF) shl 8) or
+               ((buf[offset + 2].toInt() and 0xFF) shl 16) or
+               ((buf[offset + 3].toInt() and 0xFF) shl 24)
     }
 }

@@ -19,18 +19,19 @@ data class SteamControllerState(
     val rightPadY: Short = 0,    // bytes 26-27
     val rightPadContact: Int = 0,// bytes 28-29
 
-    val quatW: Short = 0,        // bytes 32-33  IMU quaternion
-    val quatX: Short = 0,        // bytes 34-35
-    val quatY: Short = 0,        // bytes 36-37
-    val quatZ: Short = 0,        // bytes 38-39
-
-    val battery: Int = -1        // bytes 44-45 UInt16 LE (0xFFFF = full). -1 = unknown
+    // IMU block (bytes 30-45). Only present when raw IMU output has been enabled via
+    // SteamHidProtocol.setImuEnabled() — the report grows to >= 46 bytes when it is.
+    // imuValid says whether the fields below carry real data or are just zero padding.
+    val imuValid: Boolean = false,
+    val imuTimestamp: Int = 0,   // bytes 30-33, UInt32 LE, ~16us units (stored raw)
+    val accelX: Short = 0,       // bytes 34-35
+    val accelY: Short = 0,       // bytes 36-37
+    val accelZ: Short = 0,       // bytes 38-39
+    val gyroX: Short = 0,        // bytes 40-41
+    val gyroY: Short = 0,        // bytes 42-43
+    val gyroZ: Short = 0,        // bytes 44-45
 ) {
     fun isButtonPressed(mask: Int) = (buttons and mask) != 0
-
-    /** Battery as 0..100, or null if unknown. 0xFFFF raw = 100%. */
-    val batteryPercent: Int?
-        get() = if (battery < 0) null else (battery * 100 / 0xFFFF).coerceIn(0, 100)
 }
 
 // Source: github.com/ddeverill/SteamlessController/blob/main/src/steam/SteamController.h
@@ -41,7 +42,7 @@ object Buttons {
     const val B            = 0x00000002
     const val X            = 0x00000004
     const val Y            = 0x00000008
-    const val QUICK_ACCESS = 0x00000010  // Quick Access Menu button (validated empirically)
+    const val QUICK_ACCESS = 0x00000010  // Quick Access Menu button (validated empirically; upstream lists this bit as TBD)
     const val RS           = 0x00000020  // right stick click
     const val MENU         = 0x00000040  // Start/Menu button
     const val R4           = 0x00000080  // extra back button
@@ -62,13 +63,24 @@ object Buttons {
     const val L5           = 0x00040000
     const val LB           = 0x00080000
     const val RS_TOUCH     = 0x00100000
-    const val TP_RT        = 0x00200000  // right trackpad touch
-    const val LT_FULL      = 0x00400000  // LT full digital press (empirically suspected — V1.2)
+    const val TP_RT        = 0x00200000  // right trackpad active (touch or click)
+
+    // UNRESOLVED: bit 0x00400000 has two competing readings and both names below are
+    // the same bit, so only one can be right — settle it in DebugActivity by pressing LT
+    // fully and then hard-pressing the right trackpad, and delete the loser.
+    //
+    //  - TP_RT_CLICK: what the upstream header documents, and it pairs with TP_LT/
+    //    TP_LT_CLICK in byte 5 the same way TP_RT pairs with this one.
+    //  - LT_FULL: suspected empirically while building V2, by symmetry with RT_FULL.
+    //    ButtonMapping exposes it to users as "L2 / LT (full press)", so if this reading
+    //    is wrong that entry fires on a trackpad click instead.
+    const val TP_RT_CLICK  = 0x00400000  // right trackpad hard press (upstream reading)
+    const val LT_FULL      = 0x00400000  // LT full digital press (V2 reading)
     const val RT_FULL      = 0x00800000  // RT full digital press
 
     // byte5 (flags)
     const val LS_TOUCH   = 0x01000000
-    const val TP_LT      = 0x02000000  // left trackpad touch
+    const val TP_LT      = 0x02000000  // left trackpad active (touch or click)
     const val TP_LT_CLICK= 0x04000000
     const val GRIP_RT    = 0x10000000
     const val GRIP_LT    = 0x20000000

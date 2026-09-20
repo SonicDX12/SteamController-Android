@@ -122,10 +122,14 @@ class DebugActivity : AppCompatActivity() {
         binding.tvRPX.text = "X: %6d".format(s.rightPadX.toInt())
         binding.tvRPY.text = "Y: %6d".format(s.rightPadY.toInt())
 
-        binding.tvQW.text = "qW: %5d".format(s.quatW.toInt())
-        binding.tvQX.text = "qX: %5d".format(s.quatX.toInt())
-        binding.tvQY.text = "qY: %5d".format(s.quatY.toInt())
-        binding.tvQZ.text = "qZ: %5d".format(s.quatZ.toInt())
+        // The IMU block is only present once raw accel/gyro output has been enabled;
+        // until then these stay at zero rather than showing whatever is in those bytes.
+        binding.tvAX.text = "aX: %6d".format(s.accelX.toInt())
+        binding.tvAY.text = "aY: %6d".format(s.accelY.toInt())
+        binding.tvAZ.text = "aZ: %6d".format(s.accelZ.toInt())
+        binding.tvGX.text = "gX: %6d".format(s.gyroX.toInt())
+        binding.tvGY.text = "gY: %6d".format(s.gyroY.toInt())
+        binding.tvGZ.text = "gZ: %6d".format(s.gyroZ.toInt())
     }
 
     private fun updateHz() {

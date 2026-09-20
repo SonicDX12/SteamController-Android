@@ -19,6 +19,7 @@ import com.steamcontroller.android.input.ShizukuInputInjector
 import com.steamcontroller.android.parser.Buttons
 import com.steamcontroller.android.parser.SteamControllerState
 import com.steamcontroller.android.parser.SteamReportParser
+import com.steamcontroller.android.protocol.SteamCommands
 import com.steamcontroller.android.uinput.UInputGamepad
 import com.steamcontroller.android.usb.HidReportReader
 import com.steamcontroller.android.usb.SteamHidProtocol
@@ -259,10 +260,12 @@ class ControllerService : Service() {
         when (Prefs.getTransport(this)) {
             Transport.BLUETOOTH -> btManager.sendRumble(scaledStrong, scaledWeak)
             Transport.USB       -> {
-                // USB rumble = feature report via controlTransfer. Not implemented yet —
-                // requires identifying the exact SC2026 feature report ID (likely 0x8F
-                // per hid-steam.c) and payload format. Same byte structure as BT.
-                Log.v(TAG, "USB rumble not implemented yet")
+                val conn = usbManager.connection
+                if (conn == null) {
+                    Log.v(TAG, "USB rumble skipped: no connection")
+                } else {
+                    SteamHidProtocol.sendRumble(conn, scaledStrong, scaledWeak)
+                }
             }
         }
     }
@@ -335,7 +338,7 @@ class ControllerService : Service() {
 
         heartbeatJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
-                delay(800)
+                delay(SteamCommands.KEEPALIVE_INTERVAL_MS)
                 SteamHidProtocol.heartbeat(conn)
             }
         }
@@ -383,7 +386,7 @@ class ControllerService : Service() {
 
         heartbeatJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
-                delay(800)
+                delay(SteamCommands.KEEPALIVE_INTERVAL_MS)
                 btManager.sendHeartbeat()
             }
         }
@@ -391,22 +394,21 @@ class ControllerService : Service() {
     }
 
     private fun onHidFrame(state: SteamControllerState, raw: ByteArray) {
+        if (raw.isEmpty()) return
+        val reportId = raw[0].toInt() and 0xFF
+
+        // The battery arrives in its own report (0x43), not in the state report. Route it
+        // first: a battery report is far too short to be parsed as state.
+        SteamReportParser.parseBatteryStatus(raw)?.let { battery ->
+            if (_batteryFlow.value != battery.percent) _batteryFlow.value = battery.percent
+            return
+        }
+
+        if (!SteamReportParser.isStateReportId(reportId)) return
+
         _stateFlow.value = state
         _rawReportFlow.value = raw
-
-        // Dedicated battery/charge report (id 0x43) — works on both USB and BT,
-        // percent is already 0-100. Takes priority over the legacy USB-only guess below.
-        SteamReportParser.parseBatteryStatus(raw)?.let { status ->
-            if (_batteryFlow.value != status.percent) _batteryFlow.value = status.percent
-        }
-        // Legacy fallback: battery byte guess inside the full USB state report.
-        state.batteryPercent?.let { pct ->
-            if (_batteryFlow.value != pct) _batteryFlow.value = pct
-        }
-
-        if (raw.isNotEmpty() && (raw[0].toInt() and 0xFF) == 0x45) {
-            handleState(state)
-        }
+        handleState(state)
     }
 
     // Try uinput first (real InputDevice, works in games). Fall back to inject if uinput is denied.
@@ -558,6 +560,14 @@ class ControllerService : Service() {
         try { uinput.unbind() } catch (_: Throwable) {}
         scope.cancel()
         reader?.stop()
+        // Hand the controller back to its firmware keyboard/mouse emulation, otherwise it
+        // stays mute until the firmware's own revert timeout expires.
+        try {
+            usbManager.connection?.let { SteamHidProtocol.enableLizardMode(it) }
+            btManager.restoreLizardMode()
+        } catch (t: Throwable) {
+            Log.w(TAG, "Lizard restore failed: ${t.message}")
+        }
         usbManager.disconnect()
         try { btManager.disconnect() } catch (_: Throwable) {}
         _modeFlow.value = InjectionMode.NONE

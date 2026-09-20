@@ -33,9 +33,11 @@ class HidReportReader(
                             Log.i(TAG, "Reports received: $totalReports, last ID=0x${(buf[0].toInt() and 0xFF).toString(16)}, len=$len")
                         }
                         val raw = buf.copyOf(len)
-                        // Parse `raw` (actual length), not the reused `buf` — short reports like
-                        // the id-0x43 battery status would otherwise pick up stale bytes from a
-                        // previous, longer read past offset `len`.
+                        // Parse `raw` (actual length), not the reused `buf`. Two reasons:
+                        // a short report like the id-0x43 battery status would otherwise pick
+                        // up stale bytes from a previous, longer read past offset `len`, and
+                        // report length is what tells us whether the IMU block is present at
+                        // bytes 30-45.
                         val state = SteamReportParser.parse(raw)
                         // Always emit raw so DebugActivity shows something even with unexpected IDs
                         onReport(state ?: SteamReportParser.parseRaw(raw), raw)
