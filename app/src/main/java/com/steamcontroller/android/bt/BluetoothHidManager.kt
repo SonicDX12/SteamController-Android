@@ -443,43 +443,36 @@ class BluetoothHidManager(private val context: Context) {
             // Clear any haptic left running from a previous session or a bad write.
             stopAllHaptics()
 
-            // PROBE: single write, not a loop — if this one turns out to mean something
-            // other than "clear the digital mappings", one buzz is recoverable and a
-            // keepalive of them is not. Promote it into sendHeartbeat() once confirmed.
-            // Whether lizard mode can be turned off through this characteristic is
-            // UNKNOWN. Every shape below was accepted by the GATT write (no error, no
-            // status 7), but the captures that judged them are void: they were read off
-            // an input node named "Steam Controller Mouse", which is the device
-            // uinput_jni.cpp creates for our own mouse mode (045e:038e), not the
-            // controller. We measured ourselves and concluded the firmware had ignored us.
+            // There is nothing to disable over BLE: the controller never sends HID
+            // reports on this transport at all. Measured on 28de:1303 (bus 0005), the
+            // HOGP nodes Android creates for it, across three phases:
             //
-            // The controller's own nodes carry the "Valve Software " prefix that usbhid
-            // builds from the USB manufacturer string, and read 28de:1302 under
-            // `getevent -pi`. Match on the vendor id, not the name — the names collide.
+            //   fresh BLE connection, service never started   0 events
+            //   service running, controller provably in hand  0 events
+            //   service stopped, lizard explicitly restored   0 events
             //
-            //   [0x01, 0x81, 0x00]                     wrapped   → made it buzz instead
-            //   [0x81]                                 raw       → unmeasured
-            //   [0x81, 0x00]                           raw + len → unmeasured
-            //   [0x87, 0x07,0,0, 0x08,0,0]             settings  → unmeasured
+            // The middle phase is the one that counts — our virtual pad took 26 BTN_TL,
+            // 24 BTN_TR and 123 trigger events over the same window, so the controller
+            // was being worked the whole time while its own nodes stayed silent. It
+            // advertises the profiles (BATTERY,Hogp; a Mouse and a Keyboard node both
+            // exist) and emits on neither.
             //
-            // Only the buzz survives, having been judged by feel rather than by a node.
-            // It tells us the byte after the report id lands in the command slot, so the
-            // wrapped feature-report envelope USB uses is wrong here.
+            // So the cursor that drove this whole investigation was always ours, from
+            // the trackpad mouse mode — 1545 REL events on our uinput node in that same
+            // phase. Nothing to send, nothing to forbid, and no reason to keep probing
+            // this characteristic for a lizard command.
             //
-            // The keepalive stays empty until a probe is re-measured against the right
-            // node, which leaves the firmware in lizard mode — where it already was.
+            // The keepalive therefore stays empty over BLE by choice, not as a fallback.
             //
-            // USB settles differently and needs no fix: claimInterface(force = true)
+            // USB is a separate story and also needs no fix: claimInterface(force = true)
             // detaches the kernel driver from the controller's single HID interface, so
-            // its nodes disappear outright and the firmware has no channel to Android
-            // left. Measured — event16/17 gone at service start, zero events after.
+            // its nodes stop existing at service start — 5637 events before, none after.
             //
-            // Remaining approach for BLE, not attempted yet: the same move, one layer up —
-            // stop Android consuming the reports rather than stop the controller sending
-            // them. Shell UID holds BLUETOOTH_PRIVILEGED (verified on this device), so the
-            // Shizuku user service could call the hidden
-            // BluetoothHidHost.setConnectionPolicy(device, CONNECTION_POLICY_FORBIDDEN)
-            // and restore it on stop.
+            // One probe result survives from the earlier attempts, judged by feel:
+            // [0x01, 0x81, 0x00] makes the controller buzz, which puts 0x81
+            // (OUT_HAPTIC_PULSE) in the command slot. The byte after the report id is
+            // read as the command here, so the wrapped USB feature-report envelope does
+            // not apply to this characteristic.
             return
         }
 
