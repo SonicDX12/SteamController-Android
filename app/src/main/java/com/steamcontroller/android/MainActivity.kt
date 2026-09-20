@@ -21,7 +21,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.steamcontroller.android.bt.BluetoothHidManager
 import com.steamcontroller.android.databinding.ActivityMainBinding
@@ -35,6 +34,15 @@ class MainActivity : AppCompatActivity() {
 
     private val TAG = "MainActivity"
     private lateinit var binding: ActivityMainBinding
+
+    /**
+     * Theme in force when this activity was created.
+     *
+     * The picker lives in SettingsActivity now, and its recreate() only rebuilds itself —
+     * this activity sits in the back stack keeping the old palette until something tells
+     * it otherwise. Compared on resume so the change follows the user back.
+     */
+    private var appliedThemeMode: ThemeMode? = null
     private var serviceRunning = false
     private var pairedBtDevices: List<BluetoothDevice> = emptyList()
     // Tracks whether the current "started" session has reached a working injection mode.
@@ -84,42 +92,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Steam palette vs. wallpaper-derived Material You.
-     *
-     * The choice is only a pref: SteamControllerApp re-reads it whenever an Activity is
-     * created, so applying it is just recreate(). Dynamic colour needs Android 12+, so on
-     * older devices the option is disabled rather than silently doing nothing.
-     */
-    private fun setupThemeToggle() {
-        val dynamicAvailable = DynamicColors.isDynamicColorAvailable()
-        val current = Prefs.getThemeMode(this)
-
-        binding.btnThemeDynamic.isEnabled = dynamicAvailable
-        if (!dynamicAvailable) {
-            binding.tvThemeHint.visibility = View.VISIBLE
-            binding.tvThemeHint.text = getString(R.string.theme_dynamic_unavailable)
-        }
-
-        val effective = if (current == ThemeMode.DYNAMIC && !dynamicAvailable) ThemeMode.STEAM else current
-        binding.toggleTheme.check(
-            if (effective == ThemeMode.DYNAMIC) R.id.btnThemeDynamic else R.id.btnThemeSteam
-        )
-
-        binding.toggleTheme.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
-            val picked = if (checkedId == R.id.btnThemeDynamic) ThemeMode.DYNAMIC else ThemeMode.STEAM
-            if (picked == Prefs.getThemeMode(this)) return@addOnButtonCheckedListener
-            Prefs.setThemeMode(this, picked)
-            log("Theme: ${picked.displayName}")
-            recreate()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        appliedThemeMode = Prefs.getThemeMode(this)
 
         Shizuku.addRequestPermissionResultListener(shizukuPermissionListener)
 
@@ -154,10 +131,13 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ProfilesActivity::class.java))
         }
 
+        binding.btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
         setupTransportDropdown()
         setupControlModeToggle()
         setupGamepadVariantRadios()
-        setupThemeToggle()
         requestNotificationPermissionIfNeeded()
 
         binding.btnRefreshBt.setOnClickListener {
@@ -632,6 +612,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        // Picked in SettingsActivity while we were paused: rebuild before anything is drawn.
+        if (appliedThemeMode != null && appliedThemeMode != Prefs.getThemeMode(this)) {
+            recreate()
+            return
+        }
+
         updateShizukuStatus(Shizuku.pingBinder() &&
             Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED)
 
