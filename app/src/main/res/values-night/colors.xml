@@ -14,7 +14,7 @@
     <color name="md_on_primary_container">#C2E8FF</color>
 
     <!-- Secondary -->
-    <color name="md_secondary">#B0C9D8</color>
+    <color name="md_secondary">#93C8E6</color>
     <color name="md_on_secondary">#1B3442</color>
     <color name="md_secondary_container">#324B5A</color>
     <color name="md_on_secondary_container">#CCE5F4</color>
@@ -48,7 +48,7 @@
 
     <!-- Outlines -->
     <color name="md_outline">#89939C</color>
-    <color name="md_outline_variant">#3F4A53</color>
+    <color name="md_outline_variant">#55616B</color>
 
     <!-- Inverse -->
     <color name="md_inverse_surface">#DFE3E7</color>

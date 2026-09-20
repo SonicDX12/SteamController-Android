@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Distinguishes the debug install from a release one sitting next to it. -->
+    <string name="app_name">Steam Ctrl (debug)</string>
+</resources>

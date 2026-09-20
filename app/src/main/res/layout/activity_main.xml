@@ -363,6 +363,7 @@
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:layout_marginTop="14dp"
+            android:layout_marginBottom="16dp"
             android:textSize="17sp"
             android:textStyle="bold"
             app:cornerRadius="20dp"
