@@ -235,8 +235,8 @@ class BluetoothHidManager(private val context: Context) {
      * so this must keep running for as long as we drive the controller.
      */
     fun sendHeartbeat() {
-        enqueueWrite(SteamCommands.clearDigitalMappings())
-        enqueueWrite(SteamCommands.disableTrackpadModes())
+        enqueueWrite(SteamCommands.clearDigitalMappings(padded = false))
+        enqueueWrite(SteamCommands.disableTrackpadModes(padded = false))
     }
 
     /** Enable or disable the raw accel/gyro block in the state report. */
@@ -246,8 +246,8 @@ class BluetoothHidManager(private val context: Context) {
 
     /** Hand the controller back to its firmware emulation. Call before disconnecting. */
     fun restoreLizardMode() {
-        enqueueWrite(SteamCommands.restoreDefaultMappings())
-        enqueueWrite(SteamCommands.loadDefaultSettings())
+        enqueueWrite(SteamCommands.restoreDefaultMappings(padded = false))
+        enqueueWrite(SteamCommands.loadDefaultSettings(padded = false))
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -381,8 +381,15 @@ class BluetoothHidManager(private val context: Context) {
                 // has to match what parseBatteryStatus expects — [chargeState, percent] —
                 // and this characteristic carries no charge state, so it goes out as 0
                 // (unknown) rather than inventing one.
-                short == VALVE_BATTERY_CHAR && data.size == VALVE_BATTERY_REPORT_LEN ->
-                    byteArrayOf(SteamReportParser.REPORT_BATTERY_STATUS.toByte(), 0x00, data[1])
+                short == VALVE_BATTERY_CHAR && data.size == VALVE_BATTERY_REPORT_LEN -> {
+                    // byte[0] is the charge state and byte[1] the percent — the same
+                    // [chargeState, percent] order the 0x43 report uses, confirmed on
+                    // hardware while charging (04 64 = CHARGING_DONE at 100%). The rest is
+                    // still unidentified, so log the payload whole.
+                    Log.i(TAG, "Battery report: ${data.joinToString(" ") { "%02x".format(it) }}" +
+                        " → percent=${data[1].toInt() and 0xFF}")
+                    byteArrayOf(SteamReportParser.REPORT_BATTERY_STATUS.toByte(), data[0], data[1])
+                }
                 else -> {
                     Log.v(TAG, "Unrecognized short report (${data.size}B) from ${ch.uuid}: " +
                         data.joinToString(" ") { "%02x".format(it) })

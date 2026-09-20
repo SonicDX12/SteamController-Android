@@ -47,16 +47,22 @@ object SteamCommands {
     const val FEATURE_REPORT_SIZE = 64
 
     /**
-     * Wrap a command + payload into a feature report buffer, zero-padded to
-     * FEATURE_REPORT_SIZE. The buffer includes the feature report ID as byte 0.
+     * Wrap a command + payload as [featureReportId | cmd | payloadSize | payload...].
+     *
+     * `padded` controls the trailing zero fill to FEATURE_REPORT_SIZE. USB feature
+     * reports are fixed-size and want the padding; the BLE vendor characteristic rejects
+     * a 64-byte write outright with GATT status 7 (invalid attribute length), observed on
+     * hardware 2026-09-20 — and V2's 8-byte haptic writes to that same characteristic go
+     * through, which is what points at length rather than content.
      */
     fun buildCommand(
         cmd: Int,
         payload: ByteArray = ByteArray(0),
         featureReportId: Int = FEATURE_REPORT_CMD,
+        padded: Boolean = true,
     ): ByteArray {
         require(payload.size <= FEATURE_REPORT_SIZE - 3) { "payload too large: ${payload.size}" }
-        val buf = ByteArray(FEATURE_REPORT_SIZE)
+        val buf = ByteArray(if (padded) FEATURE_REPORT_SIZE else payload.size + 3)
         buf[0] = featureReportId.toByte()
         buf[1] = cmd.toByte()
         buf[2] = payload.size.toByte()
@@ -78,13 +84,16 @@ object SteamCommands {
     /**
      * Step 1 of leaving lizard mode: drop the firmware's keyboard/mouse button mappings.
      */
-    fun clearDigitalMappings(featureReportId: Int = FEATURE_REPORT_CMD): ByteArray =
-        buildCommand(CMD_CLEAR_DIGITAL_MAPPINGS, featureReportId = featureReportId)
+    fun clearDigitalMappings(featureReportId: Int = FEATURE_REPORT_CMD, padded: Boolean = true): ByteArray =
+        buildCommand(CMD_CLEAR_DIGITAL_MAPPINGS, featureReportId = featureReportId, padded = padded)
 
     /**
      * Step 2: take the trackpads out of firmware mouse mode so they report raw positions.
      */
-    fun disableTrackpadModes(featureReportId: Int = FEATURE_REPORT_CMD): ByteArray =
+    fun disableTrackpadModes(
+        featureReportId: Int = FEATURE_REPORT_CMD,
+        padded: Boolean = true,
+    ): ByteArray =
         buildCommand(
             CMD_SET_SETTINGS,
             settingsPayload(
@@ -92,6 +101,7 @@ object SteamCommands {
                 SETTING_LEFT_TRACKPAD_MODE to TRACKPAD_NONE,
             ),
             featureReportId,
+            padded,
         )
 
     /** Enable or disable the raw accel/gyro block at bytes 30-45 of the state report. */
@@ -105,11 +115,11 @@ object SteamCommands {
         )
 
     /** Restore firmware keyboard/mouse emulation. Send on shutdown so Steam/the OS get it back. */
-    fun restoreDefaultMappings(featureReportId: Int = FEATURE_REPORT_CMD): ByteArray =
-        buildCommand(CMD_SET_DEFAULT_MAPPINGS, featureReportId = featureReportId)
+    fun restoreDefaultMappings(featureReportId: Int = FEATURE_REPORT_CMD, padded: Boolean = true): ByteArray =
+        buildCommand(CMD_SET_DEFAULT_MAPPINGS, featureReportId = featureReportId, padded = padded)
 
-    fun loadDefaultSettings(featureReportId: Int = FEATURE_REPORT_CMD): ByteArray =
-        buildCommand(CMD_LOAD_DEFAULT_SETTINGS, featureReportId = featureReportId)
+    fun loadDefaultSettings(featureReportId: Int = FEATURE_REPORT_CMD, padded: Boolean = true): ByteArray =
+        buildCommand(CMD_LOAD_DEFAULT_SETTINGS, featureReportId = featureReportId, padded = padded)
 
     /**
      * Continuous two-channel rumble, as an output report.
