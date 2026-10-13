@@ -1,7 +1,11 @@
 package com.steamcontroller.android.service
 
 import android.app.*
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import android.content.pm.ServiceInfo
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
@@ -38,6 +42,7 @@ class ControllerService : Service() {
     companion object {
         private const val TAG = "ControllerService"
         const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_ID_SHIZUKU = 2
         const val CHANNEL_ID = "steam_controller"
         const val EXTRA_DEVICE = "usb_device"
         const val ACTION_STOP = "com.steamcontroller.android.STOP"
@@ -73,6 +78,19 @@ class ControllerService : Service() {
     private var mode: InjectionMode = InjectionMode.NONE
     private var reader: HidReportReader? = null
     private var heartbeatJob: Job? = null
+    private var initialized = false
+
+    // The service, not MainActivity, has to notice the unplug: with auto-launch the
+    // activity is long gone by then.
+    private val usbDetachReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val dev: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+            if (dev != null && dev == usbManager.device) {
+                Log.i(TAG, "Controller unplugged, stopping")
+                stopSelf()
+            }
+        }
+    }
 
     // Bits whose changes must pass through the debounce mechanism before being injected.
     // Mechanical switches only — the SC2026's grip squeeze sensors (GRIP_LT/RT), trackpad
@@ -103,6 +121,8 @@ class ControllerService : Service() {
         uinput = UInputGamepad(this, Prefs.getProfile(this))
         uinput.onRumble = { strong, weak -> forwardRumble(strong, weak) }
         createNotificationChannel()
+        ContextCompat.registerReceiver(this, usbDetachReceiver,
+            IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED), ContextCompat.RECEIVER_NOT_EXPORTED)
         _profileFlow.value = Prefs.getProfile(this).id
 
         // Refresh the foreground notification whenever the controller's battery level changes.
@@ -295,6 +315,12 @@ class ControllerService : Service() {
             startForeground(NOTIFICATION_ID, buildNotification())
         }
 
+        // Auto-launch can fire while we already run (BT reconnect, USB re-attach intent).
+        // startForeground() above must still be honoured, but initialising twice would
+        // open a second transport and a second heartbeat.
+        if (initialized) return START_STICKY
+        initialized = true
+
         val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent?.getParcelableExtra(EXTRA_DEVICE, UsbDevice::class.java)
         } else {
@@ -310,6 +336,19 @@ class ControllerService : Service() {
         val transport = Prefs.getTransport(this@ControllerService)
         Log.i(TAG, "Initializing with transport=$transport")
         chooseInjectionMode()
+        if (mode == InjectionMode.NONE) {
+            // Typically Shizuku not restarted after a reboot. Say so in a notification that
+            // outlives the service, rather than leaving a "Connecting…" one that never resolves.
+            getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID_SHIZUKU,
+                Notification.Builder(this, CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.stat_notify_error)
+                    .setContentTitle(getString(R.string.notification_title))
+                    .setContentText(getString(R.string.shizuku_not_running))
+                    .setAutoCancel(true)
+                    .build())
+            stopSelf()
+            return
+        }
 
         val ok = when (transport) {
             Transport.USB       -> initUsb(device)
@@ -383,6 +422,9 @@ class ControllerService : Service() {
             },
             onConnectionChange = { connected ->
                 Log.i(TAG, "BT connection state: $connected")
+                // Controller switched off or out of range: drop the virtual pad like a real
+                // one being unplugged. AutoLaunchReceiver brings us back on reconnection.
+                if (!connected) stopSelf()
             }
         )
 
@@ -559,6 +601,7 @@ class ControllerService : Service() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(usbDetachReceiver)
         try { uinput.unbind() } catch (_: Throwable) {}
         scope.cancel()
         reader?.stop()

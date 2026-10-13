@@ -154,7 +154,8 @@ class MainActivity : ComponentActivity() {
         }
 
         // Handle intent if launched by USB attach event
-        intent?.let { handleIntent(it) }
+        // savedInstanceState: a rotation replays the same intent, don't auto-close on it.
+        if (savedInstanceState == null) intent?.let { handleIntent(it, fromLaunch = true) }
     }
 
     @androidx.compose.runtime.Composable
@@ -234,12 +235,29 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
-    private fun handleIntent(intent: Intent) {
+    private fun handleIntent(intent: Intent, fromLaunch: Boolean = false) {
         if (intent.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
             val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+            // fromLaunch: an already-open app (onNewIntent) must not close under the user.
+            if (fromLaunch && device != null && canAutoLaunch(device)) {
+                // Launched by the plug itself: being briefly visible is what lets us start the
+                // foreground service, then get out of the way.
+                startControllerService(device)
+                finish()
+                return
+            }
             device?.let { onDeviceAttached(it) }
         }
     }
+
+    /** Everything must already be granted: auto-launch never prompts, it opens the app instead. */
+    private fun canAutoLaunch(device: UsbDevice): Boolean =
+        Prefs.getAutoLaunch(this) &&
+            Prefs.getTransport(this) == Transport.USB &&
+            device.vendorId == UsbConnectionManager.STEAM_VID &&
+            (getSystemService(USB_SERVICE) as UsbManager).hasPermission(device) &&
+            Shizuku.pingBinder() &&
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
 
     /** Re-read everything a loaded game profile may have overwritten. */
     private fun syncFromPrefs() {

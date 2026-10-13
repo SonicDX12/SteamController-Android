@@ -164,4 +164,7 @@
     <string name="settings_theme_steam">Steam</string>
     <string name="settings_theme_dynamic">Dynamic</string>
     <string name="settings_theme_desc">Steam uses the blue from the controller itself. Dynamic follows your wallpaper.</string>
+    <string name="settings_connection_header">CONNECTION</string>
+    <string name="settings_auto_launch">Start automatically when the controller connects</string>
+    <string name="settings_auto_launch_desc">Uses the last transport and emulated controller. Start the service manually once first so USB, Bluetooth and Shizuku permissions are granted. Shizuku must be running: after a phone reboot, restart it.</string>
 </resources>

@@ -56,9 +56,17 @@ object Prefs {
     private const val KEY_NAMED_PROFILES = "named_profiles_json"
     private const val KEY_ACTIVE_NAMED_PROFILE_ID = "active_named_profile_id"
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_AUTO_LAUNCH = "auto_launch"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+
+    fun getAutoLaunch(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_AUTO_LAUNCH, false)
+
+    fun setAutoLaunch(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_AUTO_LAUNCH, enabled).apply()
+    }
 
     fun getThemeMode(context: Context): ThemeMode =
         ThemeMode.fromId(prefs(context).getInt(KEY_THEME_MODE, ThemeMode.STEAM.id))
