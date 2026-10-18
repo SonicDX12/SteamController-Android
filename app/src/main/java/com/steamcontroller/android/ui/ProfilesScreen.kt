@@ -68,7 +68,7 @@ fun ProfilesScreen(onBindApps: (profileId: String) -> Unit, onProfileLoaded: () 
                     deleting = null; refresh()
                 }) { Text("Delete") }
             },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(android.R.string.cancel)) } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
         )
     }
 
@@ -178,6 +178,6 @@ private fun NameDialog(title: String, initial: String, onDismiss: () -> Unit, on
         title = { Text(title) },
         text = { OutlinedTextField(text, { text = it }, singleLine = true, label = { Text("Game profile name") }) },
         confirmButton = { TextButton(onClick = { onSave(text.trim()) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

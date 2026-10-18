@@ -126,7 +126,7 @@ private fun RemapDialog(source: SteamButton, current: XboxTarget, onDismiss: () 
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 
@@ -183,7 +183,7 @@ private fun shortLabelFor(t: XboxTarget): String = when (t) {
     XboxTarget.KB_VOLUME_UP -> "V+"
     XboxTarget.KB_VOLUME_DOWN -> "V-"
     XboxTarget.KB_PLAY_PAUSE -> "⏯"
-    XboxTarget.KB_BACK -> "⮌"
+    XboxTarget.KB_BACK -> "↩"
     XboxTarget.KB_HOME -> "🏠"
     XboxTarget.KB_ENTER -> "↵"
     XboxTarget.KB_DPAD_CENTER -> "●"

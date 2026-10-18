@@ -103,21 +103,21 @@ enum class XboxTarget(val mask: Int, val displayName: String, val keyBit: Int = 
 
     // ── Sidecar keyboard keys (great for back paddles in gamepad mode) ───────
     // keyBit values must match MouseTarget.bit positions (see MouseTarget.kt).
-    KB_VOLUME_UP  (-10, "🔊 Volume +",       keyBit = 10),
-    KB_VOLUME_DOWN(-11, "🔉 Volume -",       keyBit = 11),
-    KB_PLAY_PAUSE (-12, "⏯ Play / Pause",     keyBit = 12),
-    KB_BACK       (-13, "⮌ Back",             keyBit = 5),
-    KB_HOME       (-14, "🏠 Home",            keyBit = 8),
-    KB_ENTER      (-15, "↵ Enter",            keyBit = 4),
-    KB_DPAD_CENTER(-16, "● DPAD Center",      keyBit = 15),
+    KB_VOLUME_UP  (-10, "Volume +",       keyBit = 10),
+    KB_VOLUME_DOWN(-11, "Volume -",       keyBit = 11),
+    KB_PLAY_PAUSE (-12, "Play / Pause",     keyBit = 12),
+    KB_BACK       (-13, "Back",             keyBit = 5),
+    KB_HOME       (-14, "Home",            keyBit = 8),
+    KB_ENTER      (-15, "Enter",            keyBit = 4),
+    KB_DPAD_CENTER(-16, "DPAD Center",      keyBit = 15),
     KB_ESCAPE     (-17, "ESC",                keyBit = 9),
-    KB_TAB        (-18, "⇥ Tab",              keyBit = 6),
-    KB_SPACE      (-19, "␣ Space",            keyBit = 7),
-    KB_BACKSPACE  (-20, "⌫ Backspace",        keyBit = 14),
-    KB_MENU       (-21, "☰ Menu (context)",   keyBit = 13),
+    KB_TAB        (-18, "Tab",              keyBit = 6),
+    KB_SPACE      (-19, "Space",            keyBit = 7),
+    KB_BACKSPACE  (-20, "Backspace",        keyBit = 14),
+    KB_MENU       (-21, "Menu (context)",   keyBit = 13),
 
     // Special actions (mask < 0, no keyBit). Edge-triggered on press in Kotlin.
-    SCREENSHOT(-1, "📸 Take screenshot"),
+    SCREENSHOT(-1, "Take screenshot"),
 }
 
 /** Default mapping — reproduces the hardcoded mapping that existed before this feature. */

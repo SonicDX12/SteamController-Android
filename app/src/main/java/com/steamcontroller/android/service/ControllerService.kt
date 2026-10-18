@@ -673,7 +673,7 @@ class ControllerService : Service() {
         )
         val stopAction = Notification.Action.Builder(
             android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_media_pause),
-            getString(android.R.string.cancel),
+            "Cancel",
             stopIntent
         ).build()
 

@@ -214,7 +214,7 @@ private fun ConnectionHelpDialog(onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.ok)) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
         title = { Text(stringResource(R.string.help_dialog_title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
