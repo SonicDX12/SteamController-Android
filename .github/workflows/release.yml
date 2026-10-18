@@ -20,8 +20,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # No setup-android step: the runner image ships an Android SDK with its licenses
+      # accepted, and Gradle fetches what is missing (NDK, CMake). The action broke on the
+      # ubuntu-24.04 image of 2026-10-12 — its own sdkmanager stalled on license prompts.
 
       - name: Cache Gradle
         uses: actions/cache@v4
