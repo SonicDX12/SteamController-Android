@@ -3,6 +3,7 @@ package com.steamcontroller.android.ui
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -154,9 +155,9 @@ private fun ProfileCard(
                     )
                 }
             }
-            OutlinedButton(onClick = onLoad, enabled = !isActive) { Text(if (isActive) "Loaded" else "Load") }
+            OutlinedButton(onClick = onLoad, enabled = !isActive, modifier = Modifier.focusRing(CircleShape)) { Text(if (isActive) "Loaded" else "Load") }
             Box {
-                IconButton(onClick = { menu = true }) {
+                IconButton(onClick = { menu = true }, modifier = Modifier.focusRing(CircleShape)) {
                     Icon(Icons.Filled.MoreVert, stringResource(R.string.profiles_actions_desc))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {

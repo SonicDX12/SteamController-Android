@@ -3,6 +3,7 @@ package com.steamcontroller.android.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -168,7 +169,7 @@ private fun ConnectionSection(
     if (transport != Transport.BLUETOOTH) return
 
     SectionTitle(stringResource(R.string.main_bt_device_hint), painterResource(R.drawable.ic_bluetooth)) {
-        IconButton(onClick = onRefreshBt) {
+        IconButton(onClick = onRefreshBt, modifier = Modifier.focusRing(CircleShape)) {
             Icon(Icons.Filled.Refresh, stringResource(R.string.main_refresh_bt_desc), tint = MaterialTheme.colorScheme.primary)
         }
     }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -14,6 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -58,12 +64,12 @@ fun CalibrationScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text("${stringResource(R.string.calib_deadzone_label)}: ${cal.deadzonePercent}%", style = MaterialTheme.typography.bodyMedium)
-            Slider(
-                value = cal.deadzonePercent.toFloat(), valueRange = 0f..40f,
+            StepSlider(
+                value = cal.deadzonePercent.toFloat(), valueRange = 0f..40f, step = 1f,
                 onValueChange = { onChange(cal.copy(deadzonePercent = it.toInt())) },
             )
             Row(
-                Modifier.clickable { onChange(cal.copy(invertY = !cal.invertY)) }.padding(vertical = 4.dp),
+                Modifier.focusRing(SectionShape).clickable { onChange(cal.copy(invertY = !cal.invertY)) }.padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(stringResource(R.string.calib_invert_y), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
@@ -107,8 +113,8 @@ fun CalibrationScreen(onBack: () -> Unit) {
         SectionCard {
             Column(Modifier.padding(16.dp)) {
                 Text("${stringResource(R.string.calib_test_intensity)}: ${rumble.toInt()}%", style = MaterialTheme.typography.titleMedium)
-                Slider(
-                    value = rumble, valueRange = 0f..100f,
+                StepSlider(
+                    value = rumble, valueRange = 0f..100f, step = 5f,
                     onValueChange = { rumble = (it / 5).toInt() * 5f; Prefs.setRumbleIntensity(context, rumble.toInt()) },
                 )
                 ActionButton(
@@ -130,8 +136,8 @@ fun CalibrationScreen(onBack: () -> Unit) {
         SectionCard {
             Column(Modifier.padding(16.dp)) {
                 Text("${stringResource(R.string.calib_mouse_sensitivity)}: %.1f×".format(sensitivity), style = MaterialTheme.typography.titleMedium)
-                Slider(
-                    value = sensitivity, valueRange = 0.1f..3f,
+                StepSlider(
+                    value = sensitivity, valueRange = 0.1f..3f, step = 0.1f,
                     onValueChange = { sensitivity = Math.round(it * 10) / 10f; Prefs.setMouseSensitivity(context, sensitivity) },
                 )
             }
@@ -162,4 +168,32 @@ private fun StickPad(x: Float, y: Float, deadzone: Float, modifier: Modifier) {
         val k = 1f / maxOf(1f, kotlin.math.hypot(x, y))
         drawCircle(colors.primary, 6.dp.toPx(), Offset(c.x + x * k * radius, c.y + y * k * radius))
     }
+}
+
+/**
+ * Material 3's Slider ignores the D-pad here, so a TV remote could focus it but never move
+ * it: left/right would jump focus away instead. Arrows now step the value through the same
+ * [onValueChange] a finger drag uses.
+ */
+@Composable
+private fun StepSlider(
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    step: Float,
+    onValueChange: (Float) -> Unit,
+) {
+    Slider(
+        value = value,
+        valueRange = valueRange,
+        onValueChange = onValueChange,
+        modifier = Modifier.focusRing(CircleShape).onPreviewKeyEvent { event ->
+            val direction = when (event.key) {
+                Key.DirectionRight -> 1
+                Key.DirectionLeft -> -1
+                else -> return@onPreviewKeyEvent false
+            }
+            if (event.type == KeyEventType.KeyDown) onValueChange((value + direction * step).coerceIn(valueRange))
+            true
+        },
+    )
 }

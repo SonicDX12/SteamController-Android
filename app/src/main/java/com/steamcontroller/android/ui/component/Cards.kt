@@ -14,10 +14,24 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -42,6 +56,26 @@ fun Modifier.centeredContent() = fillMaxSize()
 
 val SectionShape = RoundedCornerShape(18.dp)
 
+/**
+ * Bold outline while the element (or a child) holds D-pad focus. Compose's default focus
+ * cue is a faint overlay, unreadable from a sofa on Android TV. Touch never focuses
+ * clickables, so phones never see it.
+ */
+fun Modifier.focusRing(shape: Shape, outset: Dp = 0.dp): Modifier = composed {
+    var focused by remember { mutableStateOf(false) }
+    val color = MaterialTheme.colorScheme.primary
+    onFocusChanged { focused = it.hasFocus }.drawWithContent {
+        drawContent()
+        if (!focused) return@drawWithContent
+        // An outset ring leaves a gap, so it still reads on a filled button of the same colour.
+        val gap = outset.toPx()
+        val stroke = 3.dp.toPx()
+        val inset = if (gap > 0f) -gap - stroke / 2 else stroke / 2
+        val outline = shape.createOutline(Size(size.width - 2 * inset, size.height - 2 * inset), layoutDirection, this)
+        translate(inset, inset) { drawOutline(outline, color, style = Stroke(stroke)) }
+    }
+}
+
 @Composable
 fun cardFill(): Color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
 
@@ -57,6 +91,7 @@ fun SectionCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.focusRing(SectionShape) else Modifier)
             .clip(SectionShape)
             .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier),
         shape = SectionShape,
@@ -121,7 +156,7 @@ fun HeaderIconButton(onClick: () -> Unit, highlighted: Boolean = false, icon: @C
         shape = CircleShape,
         color = if (highlighted) MaterialTheme.colorScheme.primaryContainer else cardFill(),
         contentColor = if (highlighted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(52.dp)
+        modifier = Modifier.size(52.dp).focusRing(CircleShape, outset = 4.dp)
     ) {
         IconButton(onClick = onClick, content = icon)
     }
@@ -286,6 +321,7 @@ fun ChoiceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .focusRing(RectangleShape)
             .clickable(enabled = enabled, onClick = onClick)
             .alpha(if (enabled) 1f else 0.38f)
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -326,7 +362,7 @@ fun ActionButton(
         }
         Text(text, style = MaterialTheme.typography.titleMedium)
     }
-    val buttonModifier = modifier.height(56.dp)
+    val buttonModifier = modifier.height(56.dp).focusRing(CircleShape, outset = 4.dp)
     if (primary) {
         Button(onClick = onClick, enabled = enabled, modifier = buttonModifier, content = content)
     } else {

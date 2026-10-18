@@ -1,5 +1,6 @@
 package com.steamcontroller.android.ui
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -47,6 +48,10 @@ fun DebugScreen(onBack: () -> Unit) {
 
     val state = s ?: SteamControllerState()
 
+    // Nothing here is clickable, so without this the D-pad has nothing to move to and a TV
+    // remote could never scroll past the first card.
+    val readOnlyFocus = Modifier.focusRing(SectionShape).focusable()
+
     @Composable
     fun Chips(vararg chips: Pair<String, Int>) =
         FlowRow(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -62,7 +67,7 @@ fun DebugScreen(onBack: () -> Unit) {
         }
 
         SectionTitle("Buttons", painterResource(R.drawable.ic_gamepad))
-        SectionCard {
+        SectionCard(readOnlyFocus) {
             Chips("A" to Buttons.A, "B" to Buttons.B, "X" to Buttons.X, "Y" to Buttons.Y,
                 "▲" to Buttons.DPAD_UP, "▼" to Buttons.DPAD_DOWN, "◀" to Buttons.DPAD_LEFT, "▶" to Buttons.DPAD_RIGHT)
             HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -74,7 +79,7 @@ fun DebugScreen(onBack: () -> Unit) {
         }
 
         SectionTitle("Triggers (0–32767)")
-        SectionCard {
+        SectionCard(readOnlyFocus) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 AxisBar("LT", state.leftTrigger.toInt(), signed = false)
                 AxisBar("RT", state.rightTrigger.toInt(), signed = false)
@@ -82,7 +87,7 @@ fun DebugScreen(onBack: () -> Unit) {
         }
 
         SectionTitle("Sticks (±32767)")
-        SectionCard {
+        SectionCard(readOnlyFocus) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 AxisBar(stringResource(R.string.debug_left_x), state.leftJoyX.toInt())
                 AxisBar(stringResource(R.string.debug_left_y), state.leftJoyY.toInt())
@@ -92,7 +97,7 @@ fun DebugScreen(onBack: () -> Unit) {
         }
 
         SectionTitle("Trackpads (±32767)")
-        SectionCard {
+        SectionCard(readOnlyFocus) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 AxisBar(stringResource(R.string.debug_left_x), state.leftPadX.toInt())
                 AxisBar(stringResource(R.string.debug_left_y), state.leftPadY.toInt())
@@ -103,7 +108,7 @@ fun DebugScreen(onBack: () -> Unit) {
 
         // The IMU block is only present once raw accel/gyro output is on; until then these stay at zero.
         SectionTitle("IMU")
-        SectionCard {
+        SectionCard(readOnlyFocus) {
             Row {
                 InfoRow("Accel X", state.accelX.toString(), Modifier.weight(1f))
                 InfoRow("Accel Y", state.accelY.toString(), Modifier.weight(1f))
@@ -118,7 +123,7 @@ fun DebugScreen(onBack: () -> Unit) {
         }
 
         SectionTitle("Raw report (hex)")
-        SectionCard {
+        SectionCard(readOnlyFocus) {
             Text(
                 raw?.let(::formatHex) ?: "—",
                 Modifier.padding(16.dp),

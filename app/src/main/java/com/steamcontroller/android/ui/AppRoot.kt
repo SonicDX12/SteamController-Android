@@ -20,6 +20,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import com.steamcontroller.android.R
 import com.steamcontroller.android.ThemeMode
+import com.steamcontroller.android.ui.component.focusRing
 import com.steamcontroller.android.ui.component.isWideScreen
 
 /**
@@ -117,7 +118,7 @@ fun FloatingTabBar(tabs: List<Tab>, modifier: Modifier = Modifier) {
                     color = if (tab.selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                     contentColor = if (tab.selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                     border = if (tab.selected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
-                    modifier = Modifier.width(104.dp)
+                    modifier = Modifier.width(104.dp).focusRing(CircleShape)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 10.dp)) {
                         Icon(tab.icon, tab.label)
@@ -147,7 +148,7 @@ fun SideRail(tabs: List<Tab>) {
                         if (tab.selected) 1.5.dp else 1.dp,
                         if (tab.selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().focusRing(CircleShape)
                 ) {
                     Row(Modifier.padding(vertical = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                         Icon(tab.icon, null)
