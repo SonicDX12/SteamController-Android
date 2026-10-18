@@ -158,9 +158,8 @@ private fun StickPad(x: Float, y: Float, deadzone: Float, modifier: Modifier) {
         drawLine(colors.outlineVariant, Offset(c.x, c.y - radius), Offset(c.x, c.y + radius))
         drawLine(colors.outlineVariant, Offset(c.x - radius, c.y), Offset(c.x + radius, c.y))
         if (deadzone > 0f) drawCircle(colors.primary.copy(alpha = 0.18f), radius * deadzone, c)
-        drawCircle(
-            colors.primary, 6.dp.toPx(),
-            Offset(c.x + x.coerceIn(-1f, 1f) * radius, c.y + y.coerceIn(-1f, 1f) * radius),
-        )
+        // The stick's travel is square, so a diagonal reaches ~1.16: clamp the length, not each axis.
+        val k = 1f / maxOf(1f, kotlin.math.hypot(x, y))
+        drawCircle(colors.primary, 6.dp.toPx(), Offset(c.x + x * k * radius, c.y + y * k * radius))
     }
 }
