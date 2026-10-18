@@ -42,7 +42,6 @@
     </queries>
 
     <application
-        android:name=".SteamControllerApp"
         android:allowBackup="true"
         android:banner="@drawable/tv_banner"
         android:icon="@drawable/ic_launcher"
@@ -68,36 +67,6 @@
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/device_filter" />
         </activity>
-
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="false"
-            android:parentActivityName=".MainActivity" />
-
-        <activity
-            android:name=".DebugActivity"
-            android:exported="false"
-            android:parentActivityName=".MainActivity" />
-
-        <activity
-            android:name=".CalibrationActivity"
-            android:exported="false"
-            android:parentActivityName=".MainActivity" />
-
-        <activity
-            android:name=".MappingActivity"
-            android:exported="false"
-            android:parentActivityName=".MainActivity" />
-
-        <activity
-            android:name=".ProfilesActivity"
-            android:exported="false"
-            android:parentActivityName=".MainActivity" />
-
-        <activity
-            android:name=".AppPickerActivity"
-            android:exported="false"
-            android:parentActivityName=".ProfilesActivity" />
 
         <service
             android:name=".service.ControllerService"

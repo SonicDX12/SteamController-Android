@@ -4,6 +4,7 @@ import java.io.FileInputStream
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
 // Load signing config from keystore.properties (gitignored) if present.
@@ -48,7 +49,7 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true
+        compose = true
         aidl = true
     }
 
@@ -107,4 +108,8 @@ dependencies {
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.icons.core)
+    implementation(libs.androidx.activity.compose)
 }
