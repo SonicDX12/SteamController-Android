@@ -167,4 +167,22 @@
     <string name="settings_connection_header">CONNECTION</string>
     <string name="settings_auto_launch">Start automatically when the controller connects</string>
     <string name="settings_auto_launch_desc">Uses the last transport and emulated controller. Start the service manually once first so USB, Bluetooth and Shizuku permissions are granted. Shizuku must be running: after a phone reboot, restart it.</string>
+    <!-- Update checker -->
+    <string name="main_check_update_desc">Check for updates</string>
+    <string name="update_dialog_title">Update available</string>
+    <string name="update_dialog_button_update">Update</string>
+    <string name="update_dialog_button_skip">Skip this version</string>
+    <string name="update_dialog_button_later">Later</string>
+    <string name="update_toast_up_to_date">You\'re up to date (%1$s)</string>
+    <string name="update_toast_check_failed">Could not check for updates</string>
+    <string name="update_toast_downloading">Downloading update…</string>
+    <string name="update_toast_grant_install_permission">Allow installing from this app on the next screen, then tap Update again</string>
+
+    <!-- Backup -->
+    <string name="menu_export_backup">Export backup…</string>
+    <string name="menu_import_backup">Import backup…</string>
+    <string name="backup_export_toast">Backup saved</string>
+    <string name="backup_export_failed_toast">Could not save backup: %1$s</string>
+    <string name="backup_import_toast">Restored %1$d game profile(s). Restart the service for full effect.</string>
+    <string name="backup_import_failed_toast">Could not restore backup: %1$s</string>
 </resources>

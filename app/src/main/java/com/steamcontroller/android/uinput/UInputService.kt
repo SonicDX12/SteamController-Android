@@ -94,6 +94,21 @@ class UInputService : IUInputService.Stub {
         }
     }
 
+    override fun runShellCommandForOutput(cmd: Array<String>?): String? {
+        if (cmd.isNullOrEmpty()) return null
+        return try {
+            val proc = ProcessBuilder(cmd.toList())
+                .redirectErrorStream(true)
+                .start()
+            val output = proc.inputStream.bufferedReader().readText()
+            proc.waitFor()
+            output.trim()
+        } catch (t: Throwable) {
+            Log.e(TAG, "runShellCommandForOutput failed: ${t.message}")
+            null
+        }
+    }
+
     override fun destroy() {
         try { UInputNative.destroy() } catch (t: Throwable) {
             Log.e(TAG, "destroy native failed: ${t.message}")

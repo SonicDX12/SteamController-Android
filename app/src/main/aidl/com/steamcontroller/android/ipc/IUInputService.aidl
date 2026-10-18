@@ -31,5 +31,9 @@ interface IUInputService {
     // Used for screenshot (screencap), and as a general escape hatch for future system actions.
     int runShellCommand(in String[] cmd);
 
+    // Same, but returns captured stdout (trimmed) instead of the exit code, or null on failure.
+    // Used to read a Settings value before overriding it, so it can be restored later.
+    String runShellCommandForOutput(in String[] cmd);
+
     void destroy();
 }

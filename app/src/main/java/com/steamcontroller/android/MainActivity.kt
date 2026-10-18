@@ -1,5 +1,6 @@
 package com.steamcontroller.android
 
+import android.app.DownloadManager
 import android.app.PendingIntent
 import android.content.*
 import android.hardware.usb.UsbDevice
@@ -11,6 +12,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -29,9 +31,13 @@ import com.steamcontroller.android.bt.BluetoothHidManager
 import com.steamcontroller.android.service.ControllerService
 import com.steamcontroller.android.ui.*
 import com.steamcontroller.android.uinput.GamepadProfile
+import com.steamcontroller.android.update.UpdateChecker
+import com.steamcontroller.android.update.UpdateInstaller
 import com.steamcontroller.android.usb.UsbConnectionManager
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 enum class AppTab { HOME, PROFILES, SETTINGS }
 
@@ -51,6 +57,11 @@ class MainActivity : ComponentActivity() {
     private var pairedBtDevices by mutableStateOf<List<BluetoothDevice>>(emptyList())
     private var btAddress by mutableStateOf<String?>(null)
     private var themeMode by mutableStateOf(ThemeMode.STEAM)
+    /** A newer GitHub release waiting for the user's answer, or null. */
+    private var availableUpdate by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
+
+    private var pendingUpdateDownloadId: Long = -1L
+    private var pendingUpdateApkFile: File? = null
 
     // Tracks whether the current "started" session has reached a working injection mode.
     // Used so the modeFlow observer doesn't mistake StateFlow's initial NONE replay for
@@ -85,6 +96,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val downloadReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            if (id == -1L || id != pendingUpdateDownloadId) return
+            val apkFile = pendingUpdateApkFile ?: return
+            pendingUpdateDownloadId = -1L
+            pendingUpdateApkFile = null
+            UpdateInstaller.install(this@MainActivity, apkFile)
+        }
+    }
+
     private val shizukuRequestCode = 1001
 
     private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { _, grantResult ->
@@ -115,6 +137,13 @@ class MainActivity : ComponentActivity() {
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
         }
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        // EXPORTED: DOWNLOAD_COMPLETE comes from the download provider's process, not from the
+        // system or this app, so a NOT_EXPORTED receiver never gets it. The id check in
+        // downloadReceiver is what ignores everyone else's downloads.
+        ContextCompat.registerReceiver(
+            this, downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            ContextCompat.RECEIVER_EXPORTED,
+        )
 
         requestNotificationPermissionIfNeeded()
         if (transport == Transport.BLUETOOTH) ensureBluetoothPermissionThenRefresh()
@@ -175,6 +204,14 @@ class MainActivity : ComponentActivity() {
                 Tab("Profiles", painterResource(R.drawable.ic_game_profiles), tab == AppTab.PROFILES) { tab = AppTab.PROFILES },
                 Tab("Settings", painterResource(R.drawable.ic_settings), tab == AppTab.SETTINGS) { tab = AppTab.SETTINGS },
             )
+            availableUpdate?.let { release ->
+                UpdateDialog(
+                    release,
+                    onUpdate = { availableUpdate = null; downloadAndInstall(release) },
+                    onSkip = { availableUpdate = null; Prefs.setSkippedUpdateVersion(this, release.versionName) },
+                    onLater = { availableUpdate = null },
+                )
+            }
             // Keeps each tab's scroll position while a sub-screen covers it.
             val saved = rememberSaveableStateHolder()
             AppRoot(tabs, showTabs = sub == null) {
@@ -223,6 +260,8 @@ class MainActivity : ComponentActivity() {
                             onThemeMode = { themeMode = it; Prefs.setThemeMode(this, it) },
                             onOpen = { sub = it },
                             onGithub = ::openGithubRepo,
+                            onCheckUpdates = { checkForUpdates(manual = true) },
+                            onBackupRestored = ::syncFromPrefs,
                         )
                     } }
                 }
@@ -433,11 +472,59 @@ class MainActivity : ComponentActivity() {
             Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
         // Profile may have changed from the notification while paused.
         profile = Prefs.getProfile(this)
+        maybeAutoCheckForUpdates()
+    }
+
+    private fun maybeAutoCheckForUpdates() {
+        val elapsed = System.currentTimeMillis() - Prefs.getLastUpdateCheckAt(this)
+        if (elapsed < TimeUnit.HOURS.toMillis(24)) return
+        checkForUpdates(manual = false)
+    }
+
+    private fun checkForUpdates(manual: Boolean) {
+        lifecycleScope.launch {
+            Prefs.setLastUpdateCheckAt(this@MainActivity, System.currentTimeMillis())
+            val release = UpdateChecker.fetchLatestRelease()
+            if (release == null) {
+                if (manual) Toast.makeText(this@MainActivity, R.string.update_toast_check_failed, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            if (!UpdateChecker.isNewer(release.versionName, BuildConfig.VERSION_NAME)) {
+                if (manual) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.update_toast_up_to_date, BuildConfig.VERSION_NAME),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+                return@launch
+            }
+            if (!manual && Prefs.getSkippedUpdateVersion(this@MainActivity) == release.versionName) return@launch
+            availableUpdate = release
+        }
+    }
+
+    private fun downloadAndInstall(release: UpdateChecker.ReleaseInfo) {
+        if (!UpdateInstaller.canInstall(this)) {
+            Toast.makeText(this, R.string.update_toast_grant_install_permission, Toast.LENGTH_LONG).show()
+            UpdateInstaller.requestInstallPermission(this)
+            return
+        }
+        val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+        val request = DownloadManager.Request(Uri.parse(release.apkUrl))
+            .setTitle("Steam Controller ${release.versionName}")
+            .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, release.apkName)
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+
+        pendingUpdateApkFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), release.apkName)
+        pendingUpdateDownloadId = downloadManager.enqueue(request)
+        Toast.makeText(this, R.string.update_toast_downloading, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener)
         unregisterReceiver(usbReceiver)
+        unregisterReceiver(downloadReceiver)
         super.onDestroy()
     }
 }

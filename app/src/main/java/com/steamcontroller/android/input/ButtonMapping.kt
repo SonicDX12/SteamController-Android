@@ -128,10 +128,10 @@ val DEFAULT_MAPPING: Map<SteamButton, XboxTarget> = mapOf(
     SteamButton.Y       to XboxTarget.Y,
     SteamButton.LB      to XboxTarget.LB,
     SteamButton.RB      to XboxTarget.RB,
-    // Triggers default to NONE — analog 0..32767 still routes to LT/RT axes via
-    // sendFrame() regardless. These entries only override "fully pulled" → another target.
-    SteamButton.LT      to XboxTarget.NONE,
-    SteamButton.RT      to XboxTarget.NONE,
+    // Full-press trigger → itself by default (forces the axis fully to max on a hard
+    // pull, on top of the analog 0..32767 that already routes to LT/RT via sendFrame()).
+    SteamButton.LT      to XboxTarget.LT_TRIGGER,
+    SteamButton.RT      to XboxTarget.RT_TRIGGER,
     SteamButton.LS      to XboxTarget.THUMBL,
     SteamButton.RS      to XboxTarget.THUMBR,
     SteamButton.MENU         to XboxTarget.START,

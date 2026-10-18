@@ -26,6 +26,13 @@ class UsbConnectionManager(private val context: Context) {
     var endpointOut: UsbEndpoint? = null
         private set
 
+    // Interfaces claimed only to keep them away from the kernel. The wired controller has a
+    // single interface, but the Puck exposes several (keyboard, mouse, dock, CDC…): left
+    // alone, usbhid binds them and Android sees a real hardware keyboard, which suppresses
+    // the on-screen keyboard everywhere for as long as the Puck is plugged in.
+    // Released on disconnect().
+    private val heldInterfaces = mutableListOf<UsbInterface>()
+
     companion object {
         private const val TAG = "UsbConnectionManager"
         const val STEAM_VID = 0x28DE
@@ -60,10 +67,26 @@ class UsbConnectionManager(private val context: Context) {
         connection = conn
         endpointIn = ep
         endpointOut = findOutEndpoint(iface)
+        claimRemainingInterfaces(dev, conn, iface)
         Log.i(TAG, "Interrupt OUT endpoint: " +
             (endpointOut?.let { "0x${it.address.toString(16)}" } ?: "none"))
         Log.i(TAG, "Connected — PID=0x${dev.productId.toString(16).uppercase()} iface=${iface.id} ep=${ep.address} type=${ep.type}")
         return true
+    }
+
+    // Force-claims every other interface so the kernel usbhid driver can't bind them behind
+    // our back (see heldInterfaces). We never read from these — holding the claim is enough.
+    private fun claimRemainingInterfaces(dev: UsbDevice, conn: UsbDeviceConnection, dataIface: UsbInterface) {
+        for (i in 0 until dev.interfaceCount) {
+            val iface = dev.getInterface(i)
+            if (iface.id == dataIface.id) continue
+            if (conn.claimInterface(iface, true)) {
+                heldInterfaces.add(iface)
+                Log.i(TAG, "Claimed iface ${iface.id} (class=0x${iface.interfaceClass.toString(16)}) to keep it off the kernel usbhid driver")
+            } else {
+                Log.w(TAG, "Could not claim iface ${iface.id} to withhold it from kernel usbhid")
+            }
+        }
     }
 
     private fun logAllInterfaces(dev: UsbDevice) {
@@ -110,10 +133,14 @@ class UsbConnectionManager(private val context: Context) {
 
     fun disconnect() {
         try {
-            connection?.close()
+            connection?.let { conn ->
+                heldInterfaces.forEach { conn.releaseInterface(it) }
+                conn.close()
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Error during disconnect: ${e.message}")
         } finally {
+            heldInterfaces.clear()
             device = null
             connection = null
             endpointIn = null

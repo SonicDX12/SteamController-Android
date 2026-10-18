@@ -184,7 +184,17 @@ fail:
 }
 
 // Set up a pure keyboard device (EV_KEY only). Returns fd or -1.
-static int create_keyboard_fd(uint16_t vid, uint16_t pid) {
+//
+// `full_alpha` declares the full A-Z/0-9 alphabet so Android's EventHub classifies
+// this device as INPUT_DEVICE_CLASS_ALPHAKEY + DPAD (needed on Android TV so the
+// Leanback IME routes DPAD navigation correctly — see comment below). ONLY pass
+// true for the Desktop-mode keyboard. Passing true for the gamepad-mode sidecar
+// makes Android believe a real hardware QWERTY keyboard is attached at all times,
+// which suppresses the on-screen keyboard for every text field system-wide while
+// the controller is connected — the gamepad already exposes its own ABS_HAT dpad,
+// so the sidecar doesn't need this trick, only the small MOUSE_KEYS set used by
+// back-paddle key mappings.
+static int create_keyboard_fd(uint16_t vid, uint16_t pid, bool full_alpha) {
     int fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
     if (fd < 0) { LOGE("open /dev/uinput (kbd) failed: %s", strerror(errno)); return -1; }
     if (set_bit_or_log(fd, UI_SET_EVBIT, EV_KEY, "kbd EV_KEY") < 0) goto fail;
@@ -192,15 +202,15 @@ static int create_keyboard_fd(uint16_t vid, uint16_t pid) {
     for (int i = 0; i < MOUSE_KEY_COUNT; i++) {
         if (set_bit_or_log(fd, UI_SET_KEYBIT, MOUSE_KEYS[i], "MOUSE_KEY") < 0) goto fail;
     }
-    // Declare the full alphabet + digits so Android's EventHub classifies this
-    // as INPUT_DEVICE_CLASS_ALPHAKEY (cheap test: KEY_Q present).
-    //
-    // Also declare KEY_SELECT (Linux 353) — Generic.kl maps it to DPAD_CENTER,
-    // which is the missing 5th key needed for INPUT_DEVICE_CLASS_DPAD. Without
-    // DPAD class the source is SOURCE_KEYBOARD only, and the Leanback IME on
-    // Android TV source-filters DPAD navigation to SOURCE_DPAD — that's why
-    // arrow presses worked outside the IME but not on the soft keyboard.
-    {
+    if (full_alpha) {
+        // Declare the full alphabet + digits so Android's EventHub classifies this
+        // as INPUT_DEVICE_CLASS_ALPHAKEY (cheap test: KEY_Q present).
+        //
+        // Also declare KEY_SELECT (Linux 353) — Generic.kl maps it to DPAD_CENTER,
+        // which is the missing 5th key needed for INPUT_DEVICE_CLASS_DPAD. Without
+        // DPAD class the source is SOURCE_KEYBOARD only, and the Leanback IME on
+        // Android TV source-filters DPAD navigation to SOURCE_DPAD — that's why
+        // arrow presses worked outside the IME but not on the soft keyboard.
         const int alpha_keys[] = {
             KEY_A, KEY_B, KEY_C, KEY_D, KEY_E, KEY_F, KEY_G, KEY_H, KEY_I, KEY_J,
             KEY_K, KEY_L, KEY_M, KEY_N, KEY_O, KEY_P, KEY_Q, KEY_R, KEY_S, KEY_T,
@@ -268,7 +278,7 @@ Java_com_steamcontroller_android_uinput_UInputNative_createDevice(JNIEnv*, jclas
         // Desktop: just mouse + keyboard, no gamepad.
         int mouse_fd = create_mouse_fd(prof->vid, prof->pid);
         if (mouse_fd < 0) return JNI_FALSE;
-        int kbd_fd = create_keyboard_fd(prof->vid, prof->pid);
+        int kbd_fd = create_keyboard_fd(prof->vid, prof->pid, /*full_alpha=*/true);
         if (kbd_fd < 0) {
             ioctl(mouse_fd, UI_DEV_DESTROY);
             close(mouse_fd);
@@ -332,7 +342,7 @@ Java_com_steamcontroller_android_uinput_UInputNative_createDevice(JNIEnv*, jclas
     if (g_fd_mouse < 0) {
         LOGE("Sidecar mouse creation failed — trackpad-as-cursor will be unavailable");
     }
-    g_fd_kbd = create_keyboard_fd(prof->vid, (uint16_t)(prof->pid + 0x200));
+    g_fd_kbd = create_keyboard_fd(prof->vid, (uint16_t)(prof->pid + 0x200), /*full_alpha=*/false);
     if (g_fd_kbd < 0) {
         LOGE("Sidecar keyboard creation failed — key mappings on back paddles will be unavailable");
     }

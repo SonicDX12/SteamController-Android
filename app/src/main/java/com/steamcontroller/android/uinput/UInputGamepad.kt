@@ -26,6 +26,13 @@ import rikka.shizuku.Shizuku
 class UInputGamepad(private val context: Context, initialProfile: GamepadProfile) {
 
     private val TAG = "UInputGamepad"
+
+    companion object {
+        // Sentinel meaning "the setting had no value before we touched it" (settings get
+        // returns "null" as a string in that case) — restored by deleting the key, not by
+        // writing the literal string "null".
+        private const val SHOW_IME_UNSET_SENTINEL = "__unset__"
+    }
     private var service: IUInputService? = null
     private var bound = false
     @Volatile private var profile: GamepadProfile = initialProfile
@@ -73,7 +80,9 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
         .daemon(false)
         .processNameSuffix("uinput")
         .debuggable(false)
-        .version(1)
+        // Bumped with every IUInputService change: Shizuku reuses a running service of the
+        // same version, and an old one would not know the newer methods.
+        .version(2)
 
     @Volatile private var deviceReady = false
 
@@ -89,6 +98,7 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
                         val ok = svc.createGamepad(profile.id)
                         deviceReady = ok
                         Log.i(TAG, "createGamepad(${profile.displayName}) → $ok")
+                        if (ok) applyShowImeOverride(svc)
                     } else {
                         Log.e(TAG, "Cannot open /dev/uinput from shell UID — SELinux likely blocks it on this device")
                     }
@@ -114,10 +124,49 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
     fun unbind() {
         if (!bound) return
         stopRumbleThread()
+        try { service?.let { restoreShowImeOverride(it) } } catch (_: Throwable) {}
         try { service?.destroy() } catch (_: Throwable) {}
         Shizuku.unbindUserService(args, connection, true)
         bound = false
         service = null
+    }
+
+    // Android's InputManager treats a connected HID keyboard-classified device as a
+    // hardware keyboard and suppresses the on-screen keyboard for every text field,
+    // system-wide, for as long as it's attached. The Steam Controller's own USB/BT HID
+    // interfaces can trigger this classification independently of our uinput device.
+    // Forcing Settings.Secure.show_ime_with_hard_keyboard=1 via the shell UID makes Android
+    // show the soft keyboard regardless. Reverted on unbind() so a real Bluetooth keyboard
+    // paired later behaves normally.
+    private fun applyShowImeOverride(svc: IUInputService) {
+        try {
+            if (Prefs.getSavedShowImeHardKeyboard(context) == null) {
+                val current = try {
+                    svc.runShellCommandForOutput(arrayOf("settings", "get", "secure", "show_ime_with_hard_keyboard"))
+                } catch (_: Throwable) { null }
+                val toSave = current?.takeIf { it.isNotBlank() && it != "null" } ?: SHOW_IME_UNSET_SENTINEL
+                Prefs.setSavedShowImeHardKeyboard(context, toSave)
+            }
+            svc.runShellCommand(arrayOf("settings", "put", "secure", "show_ime_with_hard_keyboard", "1"))
+            Log.i(TAG, "show_ime_with_hard_keyboard forced on")
+        } catch (t: Throwable) {
+            Log.w(TAG, "applyShowImeOverride failed: ${t.message}")
+        }
+    }
+
+    private fun restoreShowImeOverride(svc: IUInputService) {
+        try {
+            val saved = Prefs.getSavedShowImeHardKeyboard(context) ?: return
+            if (saved == SHOW_IME_UNSET_SENTINEL) {
+                svc.runShellCommand(arrayOf("settings", "delete", "secure", "show_ime_with_hard_keyboard"))
+            } else {
+                svc.runShellCommand(arrayOf("settings", "put", "secure", "show_ime_with_hard_keyboard", saved))
+            }
+            Prefs.clearSavedShowImeHardKeyboard(context)
+            Log.i(TAG, "show_ime_with_hard_keyboard restored to '$saved'")
+        } catch (t: Throwable) {
+            Log.w(TAG, "restoreShowImeOverride failed: ${t.message}")
+        }
     }
 
     /**

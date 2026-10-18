@@ -12,6 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -174,10 +177,20 @@ private fun ProfileCard(
 @Composable
 private fun NameDialog(title: String, initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     var text by remember { mutableStateOf(initial) }
+    // Ask for the keyboard explicitly: while the controller is connected Android may class it
+    // as a hardware keyboard and never auto-show the soft one on focus.
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) { focus.requestFocus(); keyboard?.show() }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { OutlinedTextField(text, { text = it }, singleLine = true, label = { Text("Game profile name") }) },
+        text = {
+            OutlinedTextField(
+                text, { text = it }, singleLine = true, label = { Text("Game profile name") },
+                modifier = Modifier.focusRequester(focus),
+            )
+        },
         confirmButton = { TextButton(onClick = { onSave(text.trim()) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
