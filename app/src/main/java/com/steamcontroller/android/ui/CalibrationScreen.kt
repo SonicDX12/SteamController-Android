@@ -56,7 +56,10 @@ fun CalibrationScreen(onBack: () -> Unit) {
         Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label, style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
-            StickPad(x / 32767f, y / 32767f, cal.deadzonePercent / 100f, Modifier.size(120.dp))
+            // The stick reports Y positive = up while the canvas grows downwards, so flip it here,
+            // as UInputGamepad does for the virtual pad. Otherwise the preview only looks right
+            // with Invert Y on, which then inverts the axis in games.
+            StickPad(x / 32767f, -y / 32767f, cal.deadzonePercent / 100f, Modifier.size(120.dp))
             Text(
                 "raw: %5d, %5d".format(rawX, rawY),
                 style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace,
