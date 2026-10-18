@@ -4,6 +4,7 @@ import com.steamcontroller.android.ipc.IUInputService
 
 import android.content.Context
 import android.util.Log
+import java.io.File
 
 // Bound by Shizuku.bindUserService() — this code runs in a separate process
 // with shell UID (2000), which on most Android versions can open /dev/uinput.
@@ -12,16 +13,50 @@ import android.util.Log
 // constructor first; either is acceptable.
 class UInputService : IUInputService.Stub {
 
-    companion object { private const val TAG = "UInputService" }
+    companion object {
+        private const val TAG = "UInputService"
+
+        /**
+         * Kills every other process running this same user service.
+         *
+         * When the app dies without unbinding (reinstall, update, force-stop, crash) Shizuku
+         * leaves the old service alive, still holding its uinput devices: games then see
+         * several Xbox pads, and an old enough one keeps a full-alphabet keyboard that hides
+         * the soft keyboard everywhere. Measured 2026-10-18: five services alive at once after
+         * a day of reinstalls. Their devices go away with them, as the kernel drops a uinput
+         * device when its fd closes. Every instance runs as shell, so it may kill the others.
+         */
+        private fun killStaleInstances() {
+            try {
+                val myPid = android.os.Process.myPid()
+                val myName = cmdline(myPid) ?: return
+                File("/proc").listFiles()?.forEach { dir ->
+                    val pid = dir.name.toIntOrNull() ?: return@forEach
+                    if (pid != myPid && cmdline(pid) == myName) {
+                        Log.w(TAG, "Killing stale $myName (pid $pid)")
+                        android.os.Process.killProcess(pid)
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "killStaleInstances failed: ${t.message}")
+            }
+        }
+
+        private fun cmdline(pid: Int): String? = try {
+            File("/proc/$pid/cmdline").readText().substringBefore('\u0000').takeIf { it.isNotEmpty() }
+        } catch (_: Exception) { null }
+    }
 
     @Suppress("unused")
     constructor() : super() {
         Log.i(TAG, "UInputService instantiated (no-arg)")
+        killStaleInstances()
     }
 
     @Suppress("unused")
     constructor(context: Context?) : super() {
         Log.i(TAG, "UInputService instantiated (Context=$context)")
+        killStaleInstances()
     }
 
     override fun canCreateDevice(): Boolean {
