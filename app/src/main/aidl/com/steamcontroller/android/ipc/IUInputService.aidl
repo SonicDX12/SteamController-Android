@@ -23,6 +23,12 @@ interface IUInputService {
     // Desktop / mouse-mode frame. `keys` is a MouseTarget bitmask.
     void sendMouseFrame(int relX, int relY, int scrollY, int keys);
 
+    // Connect or disconnect the sidecar uinput mouse device so Android immediately hides the pointer.
+    void setMouseConnected(boolean connected);
+
+    // Inject a finger touch event (ACTION_DOWN=0, ACTION_UP=1, ACTION_MOVE=2) at screen (x, y) via InputManager.
+    void injectTouch(int action, float x, float y);
+
     // Returns [strongMagnitude, weakMagnitude] in 0..65535 if a game triggered rumble,
     // or null if nothing happened since the last poll.
     int[] pollForceFeedback();

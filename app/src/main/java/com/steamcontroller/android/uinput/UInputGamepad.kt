@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
+import android.view.MotionEvent
 import com.steamcontroller.android.Prefs
 import com.steamcontroller.android.input.DEFAULT_MOUSE_MAPPING
 import com.steamcontroller.android.input.MOUSE_LEFT_PAD_CLICK_BIT
@@ -18,6 +19,7 @@ import com.steamcontroller.android.input.SystemActions
 import com.steamcontroller.android.input.XboxTarget
 import com.steamcontroller.android.parser.Buttons
 import com.steamcontroller.android.parser.SteamControllerState
+import com.steamcontroller.android.ui.TouchCursorOverlay
 import kotlin.math.abs
 import rikka.shizuku.Shizuku
 
@@ -71,8 +73,32 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
     private var leftPadHadContact: Boolean = false
     @Volatile private var cachedMouseSensitivity: Float = 1f
     @Volatile private var cachedTrackpadAsMouse: Boolean = true
+    @Volatile private var cachedCursorHoldSens: Float = 1f
+    @Volatile private var cachedCursorHoldScrollSpeed: Float = 1f
+    @Volatile private var cachedCursorHoldClickMask: Int = Buttons.A or Buttons.RT_FULL
+    @Volatile private var cachedCursorHoldTouchMode: Boolean = false
     // Trigger / pad scroll: accumulator so we can convert continuous 0..32767 deltas into discrete wheel ticks
     private var scrollAccumulator: Int = 0
+
+    // Joystick-driven Cursor Hold Mode state: fractional sub-pixel & scroll accumulators
+    private var joyMouseAccX: Float = 0f
+    private var joyMouseAccY: Float = 0f
+    private var joyScrollAcc: Float = 0f
+    private var wasCursorHoldActive: Boolean = false
+    private var lastSidecarKeys: Int = 0
+    // Base cursor speed in pixels per frame at full stick deflection (1.0x sensitivity).
+    // At ~150Hz (BLE) or ~240Hz (USB), 8f * sens gives smooth, responsive pointer travel.
+    private val joyCursorBaseSpeed = 8f
+
+    // Touch Simulation mode state: screen coordinates, touch down state, and floating overlay
+    private val touchOverlay = TouchCursorOverlay(context)
+    private var touchCursorInitialized = false
+    private var touchCursorX: Float = 0f
+    private var touchCursorY: Float = 0f
+    private var wasTouchClicking: Boolean = false
+    private var wasTouchScrolling: Boolean = false
+    private var touchScrollOriginX: Float = 0f
+    private var touchScrollOriginY: Float = 0f
 
     private val args = Shizuku.UserServiceArgs(
         ComponentName(context.packageName, UInputService::class.java.name)
@@ -82,7 +108,7 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
         .debuggable(false)
         // Bumped with every IUInputService change: Shizuku reuses a running service of the
         // same version, and an old one would not know the newer methods.
-        .version(2)
+        .version(4)
 
     @Volatile private var deviceReady = false
 
@@ -124,6 +150,7 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
     fun unbind() {
         if (!bound) return
         stopRumbleThread()
+        touchOverlay.destroy()
         try { service?.let { restoreShowImeOverride(it) } } catch (_: Throwable) {}
         try { service?.destroy() } catch (_: Throwable) {}
         Shizuku.unbindUserService(args, connection, true)
@@ -148,7 +175,8 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
                 Prefs.setSavedShowImeHardKeyboard(context, toSave)
             }
             svc.runShellCommand(arrayOf("settings", "put", "secure", "show_ime_with_hard_keyboard", "1"))
-            Log.i(TAG, "show_ime_with_hard_keyboard forced on")
+            svc.runShellCommand(arrayOf("appops", "set", context.packageName, "SYSTEM_ALERT_WINDOW", "allow"))
+            Log.i(TAG, "show_ime_with_hard_keyboard forced on & SYSTEM_ALERT_WINDOW allowed")
         } catch (t: Throwable) {
             Log.w(TAG, "applyShowImeOverride failed: ${t.message}")
         }
@@ -212,6 +240,8 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
             val ok = svc.createGamepad(newProfile.id)
             if (ok) {
                 profile = newProfile
+                lastSidecarKeys = 0
+                wasCursorHoldActive = false
                 Log.i(TAG, "Switched profile to ${newProfile.displayName}")
             } else {
                 Log.e(TAG, "createGamepad(${newProfile.displayName}) returned false")
@@ -235,6 +265,10 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
             cachedMapping  = Prefs.getAllMappings(context)
             cachedMouseSensitivity = Prefs.getMouseSensitivity(context)
             cachedTrackpadAsMouse  = Prefs.getTrackpadAsMouseInGamepad(context)
+            cachedCursorHoldSens        = Prefs.getCursorHoldSensitivity(context)
+            cachedCursorHoldScrollSpeed = Prefs.getCursorHoldScrollSpeed(context)
+            cachedCursorHoldClickMask   = Prefs.getCursorHoldClickMask(context)
+            cachedCursorHoldTouchMode   = Prefs.getCursorHoldTouchMode(context)
             lastCalRefresh = now
         }
 
@@ -246,9 +280,22 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
         val leftCal  = cachedLeftCal
         val rightCal = cachedRightCal
 
+        // Check if any button mapped to CURSOR_HOLD is currently held down.
+        var cursorHoldActive = false
+        for ((source, target) in cachedMapping) {
+            if (target == XboxTarget.CURSOR_HOLD && state.isButtonPressed(source.mask)) {
+                cursorHoldActive = true
+                break
+            }
+        }
+
+        val clickMask = cachedCursorHoldClickMask
+        val touchMode = cachedCursorHoldTouchMode
+        var cursorClickPressed = false
+
         // Apply the user-configurable button mapping.
         //   target.mask > 0       → regular Xbox button bit (OR into the bitmask).
-        //   target.keyBit >= 0    → sidecar keyboard key (OR into the sidecar key bitmask).
+        //   target.keyBit >= 0    → sidecar keyboard/mouse key (OR into the sidecar key bitmask).
         //   target.triggerSide!=0 → force LT (1) / RT (2) axis to max.
         //   target.mask < 0       → special action, edge-triggered on press.
         var xboxButtons = 0
@@ -257,6 +304,21 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
         var rtOverride = 0
         for ((source, target) in cachedMapping) {
             val pressed = state.isButtonPressed(source.mask)
+            if (target == XboxTarget.CURSOR_HOLD) continue
+
+            // When Cursor Hold Mode is active, any button in `clickMask` acts as Click/Confirm
+            // and is suppressed from reaching the virtual gamepad so the game doesn't react.
+            if (cursorHoldActive && (clickMask and source.mask) != 0) {
+                if (pressed) {
+                    if (touchMode) {
+                        cursorClickPressed = true
+                    } else {
+                        sidecarMappedKeys = sidecarMappedKeys or (1 shl MouseTarget.BTN_LEFT.bit)
+                    }
+                }
+                continue
+            }
+
             when {
                 target.mask > 0 && pressed -> {
                     xboxButtons = xboxButtons or target.mask
@@ -277,8 +339,19 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
         // SC2026 sticks are already in Int16 range — direct passthrough
         // SC2026 triggers are 0-32767 → scale down to Xbox 0-255.
         // ltOverride/rtOverride bump the axis to max when a remapped source is pressed.
-        val ltAnalog = (state.leftTrigger  * 255 / 32767).coerceIn(0, 255)
-        val rtAnalog = (state.rightTrigger * 255 / 32767).coerceIn(0, 255)
+        // In Cursor Hold Mode, if LT or RT is bound as a click button, its analog axis is suppressed
+        // and pulling past 50% (>16384) also triggers a Click.
+        val ltIsClick = cursorHoldActive && (clickMask and Buttons.LT_FULL) != 0
+        val rtIsClick = cursorHoldActive && (clickMask and Buttons.RT_FULL) != 0
+        val ltAnalog = if (ltIsClick) 0 else (state.leftTrigger  * 255 / 32767).coerceIn(0, 255)
+        val rtAnalog = if (rtIsClick) 0 else (state.rightTrigger * 255 / 32767).coerceIn(0, 255)
+        if ((rtIsClick && state.rightTrigger > 16384) || (ltIsClick && state.leftTrigger > 16384)) {
+            if (touchMode) {
+                cursorClickPressed = true
+            } else {
+                sidecarMappedKeys = sidecarMappedKeys or (1 shl MouseTarget.BTN_LEFT.bit)
+            }
+        }
         val lt = maxOf(ltAnalog, ltOverride)
         val rt = maxOf(rtAnalog, rtOverride)
 
@@ -299,11 +372,17 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
         val ly = -lyCalRaw.coerceAtLeast(-32767)
         val ry = -ryCalRaw.coerceAtLeast(-32767)
 
+        // When Cursor Hold Mode is active, suppress stick deflection from reaching the gamepad
+        val padLx = if (cursorHoldActive) 0 else lxCal
+        val padLy = if (cursorHoldActive) 0 else ly
+        val padRx = if (cursorHoldActive) 0 else rxCal
+        val padRy = if (cursorHoldActive) 0 else ry
+
         try {
             svc.sendFrame(
                 xboxButtons,
-                lxCal, ly,
-                rxCal, ry,
+                padLx, padLy,
+                padRx, padRy,
                 lt, rt,
                 dpadX, dpadY
             )
@@ -313,19 +392,35 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
 
         // Sidecar mouse + keyboard while a gamepad profile is active.
         // - cachedTrackpadAsMouse gates trackpad-driven cursor + scroll
-        // - mapped keyboard keys (sidecarMappedKeys) always flow through, even when
-        //   the trackpad-as-mouse toggle is off, so back-paddle keyboard mappings work.
-        pushSidecarFrame(svc, state, sidecarMappedKeys)
+        // - cursorHoldActive drives cursor with Left Stick and scroll with Right Stick
+        // - mapped keyboard/mouse keys (sidecarMappedKeys) always flow through
+        pushSidecarFrame(
+            svc, state, sidecarMappedKeys,
+            cursorHoldActive, touchMode, cursorClickPressed,
+            lxCal, ly, rxCal, ry, ryCalRaw
+        )
     }
 
     /**
-     * Sidecar frame for gamepad mode: trackpad-as-mouse + keyboard targets for
-     * back paddles. Skips emitting anything when nothing happens this frame —
-     * keeping the mouse fd idle is critical so Android IME focus isn't stolen by
-     * a phantom cursor (same rationale as in Desktop mode).
+     * Sidecar frame for gamepad mode: trackpad-as-mouse, joystick cursor-hold mode,
+     * and keyboard/mouse targets for back paddles. Skips emitting anything when nothing
+     * happens this frame — keeping the mouse fd idle is critical so Android IME focus
+     * isn't stolen by a phantom cursor (same rationale as in Desktop mode).
      */
-    private fun pushSidecarFrame(svc: IUInputService, state: SteamControllerState, mappedKeys: Int) {
-        val (relX, relY, scrollTicks) = if (cachedTrackpadAsMouse) {
+    private fun pushSidecarFrame(
+        svc: IUInputService,
+        state: SteamControllerState,
+        mappedKeys: Int,
+        cursorHoldActive: Boolean,
+        touchMode: Boolean,
+        cursorClickPressed: Boolean,
+        joyLx: Int,
+        joyLyDown: Int,
+        joyRx: Int,
+        joyRyDown: Int,
+        joyRyUp: Int,
+    ) {
+        val (padRelX, padRelY, padScrollTicks) = if (cachedTrackpadAsMouse) {
             val (rx, ry) = computeRightPadDelta(state)
             Triple(rx, ry, computeLeftPadScroll(state))
         } else {
@@ -337,12 +432,177 @@ class UInputGamepad(private val context: Context, initialProfile: GamepadProfile
             Triple(0, 0, 0)
         }
 
+        var joyRelX = 0
+        var joyRelY = 0
+        var joyScrollTicks = 0
+        var forceNudge = false
+
+        if (cursorHoldActive) {
+            val sens = cachedCursorHoldSens
+            val scrollSpeed = cachedCursorHoldScrollSpeed
+            // Left Stick → cursor delta (with quadratic response curve so fine adjustments are easy)
+            val normX = (joyLx / 32767f).coerceIn(-1f, 1f)
+            val normY = (joyLyDown / 32767f).coerceIn(-1f, 1f)
+            val curvedX = normX * (0.4f + 0.6f * abs(normX))
+            val curvedY = normY * (0.4f + 0.6f * abs(normY))
+
+            if (touchMode) {
+                val dm = context.resources.displayMetrics
+                val screenW = dm.widthPixels.toFloat().coerceAtLeast(1f)
+                val screenH = dm.heightPixels.toFloat().coerceAtLeast(1f)
+                // Scale by display density so 1.0x sensitivity matches the physical screen speed
+                // of Android's DPI-scaled + velocity-accelerated hardware mouse pointer.
+                val densityScale = dm.density.coerceIn(1.5f, 3.5f)
+                if (!touchCursorInitialized) {
+                    touchCursorX = screenW / 2f
+                    touchCursorY = screenH / 2f
+                    touchCursorInitialized = true
+                }
+
+                val scrollNormX = (joyRx / 32767f).coerceIn(-1f, 1f)
+                val scrollNormY = (joyRyDown / 32767f).coerceIn(-1f, 1f)
+                val isTouchScrolling = !cursorClickPressed &&
+                    (abs(scrollNormX) > 0.12f || abs(scrollNormY) > 0.12f)
+
+                if (isTouchScrolling) {
+                    if (wasTouchClicking) {
+                        try { svc.injectTouch(MotionEvent.ACTION_UP, touchCursorX, touchCursorY) } catch (_: Throwable) {}
+                        wasTouchClicking = false
+                    }
+                    if (!wasTouchScrolling) {
+                        touchScrollOriginX = touchCursorX
+                        touchScrollOriginY = touchCursorY
+                        try { svc.injectTouch(MotionEvent.ACTION_DOWN, touchCursorX, touchCursorY) } catch (_: Throwable) {}
+                        wasTouchScrolling = true
+                    }
+                    val scrollCurvedX = scrollNormX * (0.4f + 0.6f * abs(scrollNormX))
+                    val scrollCurvedY = scrollNormY * (0.4f + 0.6f * abs(scrollNormY))
+                    val stepX = scrollCurvedX * joyCursorBaseSpeed * densityScale * scrollSpeed
+                    val stepY = scrollCurvedY * joyCursorBaseSpeed * densityScale * scrollSpeed
+                    val nextX = touchCursorX + stepX
+                    val nextY = touchCursorY + stepY
+                    val edgeMargin = 32f * densityScale
+                    val maxStroke = minOf(screenW, screenH) * 0.40f
+                    val hitEdge = nextX <= edgeMargin || nextX >= screenW - edgeMargin ||
+                        nextY <= edgeMargin || nextY >= screenH - edgeMargin
+                    val hitMaxStroke = abs(nextX - touchScrollOriginX) > maxStroke ||
+                        abs(nextY - touchScrollOriginY) > maxStroke
+
+                    if (hitEdge || hitMaxStroke) {
+                        try {
+                            svc.injectTouch(MotionEvent.ACTION_UP, touchCursorX, touchCursorY)
+                            touchCursorX = touchScrollOriginX
+                            touchCursorY = touchScrollOriginY
+                            svc.injectTouch(MotionEvent.ACTION_DOWN, touchCursorX, touchCursorY)
+                        } catch (_: Throwable) {}
+                    } else {
+                        touchCursorX = nextX.coerceIn(0f, screenW - 1f)
+                        touchCursorY = nextY.coerceIn(0f, screenH - 1f)
+                        try {
+                            svc.injectTouch(MotionEvent.ACTION_MOVE, touchCursorX, touchCursorY)
+                        } catch (_: Throwable) {}
+                    }
+                    touchOverlay.update(true, touchCursorX, touchCursorY, true)
+                } else {
+                    if (wasTouchScrolling) {
+                        try { svc.injectTouch(MotionEvent.ACTION_UP, touchCursorX, touchCursorY) } catch (_: Throwable) {}
+                        touchCursorX = touchScrollOriginX
+                        touchCursorY = touchScrollOriginY
+                        wasTouchScrolling = false
+                    }
+                    val prevX = touchCursorX
+                    val prevY = touchCursorY
+                    touchCursorX = (touchCursorX + curvedX * joyCursorBaseSpeed * densityScale * sens).coerceIn(0f, screenW - 1f)
+                    touchCursorY = (touchCursorY + curvedY * joyCursorBaseSpeed * densityScale * sens).coerceIn(0f, screenH - 1f)
+                    touchOverlay.update(true, touchCursorX, touchCursorY, cursorClickPressed)
+
+                    try {
+                        if (cursorClickPressed && !wasTouchClicking) {
+                            svc.injectTouch(MotionEvent.ACTION_DOWN, touchCursorX, touchCursorY)
+                        } else if (cursorClickPressed && wasTouchClicking) {
+                            if (abs(touchCursorX - prevX) >= 0.5f || abs(touchCursorY - prevY) >= 0.5f) {
+                                svc.injectTouch(MotionEvent.ACTION_MOVE, touchCursorX, touchCursorY)
+                            }
+                        } else if (!cursorClickPressed && wasTouchClicking) {
+                            svc.injectTouch(MotionEvent.ACTION_UP, touchCursorX, touchCursorY)
+                        }
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "injectTouch IPC failed: ${t.message}")
+                    }
+                    wasTouchClicking = cursorClickPressed
+                }
+            } else {
+                if (wasTouchScrolling) {
+                    try { svc.injectTouch(MotionEvent.ACTION_UP, touchCursorX, touchCursorY) } catch (_: Throwable) {}
+                    touchCursorX = touchScrollOriginX
+                    touchCursorY = touchScrollOriginY
+                    wasTouchScrolling = false
+                }
+                if (wasTouchClicking) {
+                    try { svc.injectTouch(MotionEvent.ACTION_UP, touchCursorX, touchCursorY) } catch (_: Throwable) {}
+                    wasTouchClicking = false
+                }
+                touchOverlay.update(false, touchCursorX, touchCursorY, false)
+                if (!wasCursorHoldActive) {
+                    try { svc.setMouseConnected(true) } catch (_: Throwable) {}
+                }
+                joyMouseAccX += curvedX * joyCursorBaseSpeed * sens
+                joyMouseAccY += curvedY * joyCursorBaseSpeed * sens
+                joyRelX = joyMouseAccX.toInt()
+                joyRelY = joyMouseAccY.toInt()
+                joyMouseAccX -= joyRelX
+                joyMouseAccY -= joyRelY
+
+                // Right Stick vertical → scroll wheel ticks
+                val normScroll = (joyRyUp / 32767f).coerceIn(-1f, 1f)
+                joyScrollAcc += normScroll * 0.25f * scrollSpeed
+                if (abs(joyScrollAcc) >= 1f) {
+                    joyScrollTicks = joyScrollAcc.toInt()
+                    joyScrollAcc -= joyScrollTicks
+                }
+
+                // On the initial press frame of Cursor Hold Mode, nudge by 1px if stationary
+                // so Android's system pointer immediately appears on screen.
+                if (!wasCursorHoldActive && joyRelX == 0 && joyRelY == 0 && padRelX == 0 && padRelY == 0) {
+                    joyRelX = 1
+                    forceNudge = true
+                }
+            }
+        } else {
+            joyMouseAccX = 0f
+            joyMouseAccY = 0f
+            joyScrollAcc = 0f
+            if (wasTouchScrolling) {
+                try { svc.injectTouch(MotionEvent.ACTION_UP, touchCursorX, touchCursorY) } catch (_: Throwable) {}
+                touchCursorX = touchScrollOriginX
+                touchCursorY = touchScrollOriginY
+                wasTouchScrolling = false
+            }
+            if (wasTouchClicking) {
+                try { svc.injectTouch(MotionEvent.ACTION_UP, touchCursorX, touchCursorY) } catch (_: Throwable) {}
+                wasTouchClicking = false
+            }
+            if (wasCursorHoldActive) {
+                touchOverlay.update(false, touchCursorX, touchCursorY, false)
+                // Destroy the sidecar mouse uinput device when the hold button is released
+                // so Android's PointerController immediately hides the on-screen cursor.
+                try { svc.setMouseConnected(false) } catch (_: Throwable) {}
+            }
+        }
+        wasCursorHoldActive = cursorHoldActive
+
+        val relX = padRelX + joyRelX
+        val relY = padRelY + joyRelY
+        val scrollTicks = padScrollTicks + joyScrollTicks
+
         var keys = mappedKeys
         // Left trackpad click → left mouse click (only active when sidecar mouse is on).
         if (cachedTrackpadAsMouse && state.isButtonPressed(MOUSE_LEFT_PAD_CLICK_BIT)) {
             keys = keys or (1 shl MouseTarget.BTN_LEFT.bit)
         }
-        if (relX == 0 && relY == 0 && scrollTicks == 0 && keys == 0) return
+        // Always emit if keys changed (e.g. releasing a mouse click when cursorHoldActive ends)
+        if (relX == 0 && relY == 0 && scrollTicks == 0 && keys == lastSidecarKeys && !forceNudge) return
+        lastSidecarKeys = keys
         try {
             svc.sendMouseFrame(relX, relY, scrollTicks, keys)
         } catch (t: Throwable) {
