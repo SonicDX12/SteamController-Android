@@ -1,5 +1,6 @@
 package com.steamcontroller.android.input
 
+import com.steamcontroller.android.parser.Buttons
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -33,6 +34,10 @@ data class NamedProfile(
     /** Serialised as a JSON object mapping `SteamButton.name` → `XboxTarget.ordinal`. */
     val mapping: Map<String, Int>,
     val boundPackages: List<String> = emptyList(),
+    val cursorHoldSensitivity: Float = 1.0f,
+    val cursorHoldScrollSpeed: Float = 1.0f,
+    val cursorHoldClickMask: Int = Buttons.A or Buttons.RT_FULL,
+    val cursorHoldTouchMode: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put(KEY_ID, id)
@@ -48,6 +53,10 @@ data class NamedProfile(
         put(KEY_RI, rumbleIntensity)
         put(KEY_MAPPING, JSONObject(mapping as Map<*, *>))
         put(KEY_BOUND, JSONArray(boundPackages))
+        put(KEY_CHS, cursorHoldSensitivity.toDouble())
+        put(KEY_CHSS, cursorHoldScrollSpeed.toDouble())
+        put(KEY_CHCM, cursorHoldClickMask)
+        put(KEY_CHTM, cursorHoldTouchMode)
     }
 
     companion object {
@@ -64,6 +73,10 @@ data class NamedProfile(
         private const val KEY_RI = "rumbleIntensity"
         private const val KEY_MAPPING = "mapping"
         private const val KEY_BOUND = "boundPackages"
+        private const val KEY_CHS = "cursorHoldSens"
+        private const val KEY_CHSS = "cursorHoldScrollSpeed"
+        private const val KEY_CHCM = "cursorHoldClickMask"
+        private const val KEY_CHTM = "cursorHoldTouchMode"
 
         fun fromJson(obj: JSONObject): NamedProfile {
             val mapObj = obj.optJSONObject(KEY_MAPPING) ?: JSONObject()
@@ -91,6 +104,10 @@ data class NamedProfile(
                 rumbleIntensity = obj.optInt(KEY_RI, 100),
                 mapping = mapping,
                 boundPackages = bound,
+                cursorHoldSensitivity = obj.optDouble(KEY_CHS, 1.0).toFloat(),
+                cursorHoldScrollSpeed = obj.optDouble(KEY_CHSS, 1.0).toFloat(),
+                cursorHoldClickMask = obj.optInt(KEY_CHCM, Buttons.A or Buttons.RT_FULL),
+                cursorHoldTouchMode = obj.optBoolean(KEY_CHTM, false),
             )
         }
 

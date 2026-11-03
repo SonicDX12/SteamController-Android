@@ -116,11 +116,16 @@ enum class XboxTarget(val mask: Int, val displayName: String, val keyBit: Int = 
     KB_BACKSPACE  (-20, "Backspace",        keyBit = 14),
     KB_MENU       (-21, "Menu (context)",   keyBit = 13),
 
-    // Special actions (mask < 0, no keyBit). Edge-triggered on press in Kotlin.
-    SCREENSHOT(-1, "Take screenshot"),
+    // Special actions (mask < 0, no keyBit). Edge-triggered on press in Kotlin,
+    // except CURSOR_HOLD which acts as a hold-modifier for joystick-driven mouse cursor.
+    SCREENSHOT (-1, "Take screenshot"),
+    CURSOR_HOLD(-2, "Hold for Cursor Mode", keyBit = -2),
+    MOUSE_LEFT (-3, "🖱 Left click",         keyBit = MouseTarget.BTN_LEFT.bit),
+    MOUSE_RIGHT(-4, "🖱 Right click",        keyBit = MouseTarget.BTN_RIGHT.bit),
 }
 
-/** Default mapping — reproduces the hardcoded mapping that existed before this feature. */
+/** Default mapping — reproduces the hardcoded mapping that existed before this feature,
+ *  with L4 defaulted to Hold for Cursor Mode. */
 val DEFAULT_MAPPING: Map<SteamButton, XboxTarget> = mapOf(
     SteamButton.A       to XboxTarget.A,
     SteamButton.B       to XboxTarget.B,
@@ -138,8 +143,8 @@ val DEFAULT_MAPPING: Map<SteamButton, XboxTarget> = mapOf(
     SteamButton.VIEW         to XboxTarget.SELECT,
     SteamButton.STEAM        to XboxTarget.MODE,
     SteamButton.QUICK_ACCESS to XboxTarget.NONE,  // No default — user assigns
-    // Extras have no default assignment — user must pick one
-    SteamButton.L4      to XboxTarget.NONE,
+    // L4 defaults to Hold for Cursor Mode so joystick cursor works out of the box
+    SteamButton.L4      to XboxTarget.CURSOR_HOLD,
     SteamButton.L5      to XboxTarget.NONE,
     SteamButton.R4      to XboxTarget.NONE,
     SteamButton.R5      to XboxTarget.NONE,

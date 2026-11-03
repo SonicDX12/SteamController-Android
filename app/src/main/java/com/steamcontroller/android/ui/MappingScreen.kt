@@ -1,5 +1,9 @@
 package com.steamcontroller.android.ui
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,12 +14,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -39,13 +50,29 @@ fun MappingScreen(onBack: () -> Unit, onOpenProfiles: () -> Unit) {
         mutableStateMapOf<SteamButton, XboxTarget>().apply { SteamButton.entries.forEach { put(it, Prefs.getMapping(context, it)) } }
     }
     var editing by remember { mutableStateOf<SteamButton?>(null) }
+    var configuringCursorHold by remember { mutableStateOf(false) }
 
     editing?.let { source ->
-        RemapDialog(source, mappings.getValue(source), onDismiss = { editing = null }) { picked ->
-            Prefs.setMapping(context, source, picked)
-            mappings[source] = picked
-            editing = null
-        }
+        RemapDialog(
+            source = source,
+            current = mappings.getValue(source),
+            onDismiss = { editing = null },
+            onConfigureCursorHold = {
+                Prefs.setMapping(context, source, XboxTarget.CURSOR_HOLD)
+                mappings[source] = XboxTarget.CURSOR_HOLD
+                editing = null
+                configuringCursorHold = true
+            },
+            onPick = { picked ->
+                Prefs.setMapping(context, source, picked)
+                mappings[source] = picked
+                editing = null
+            }
+        )
+    }
+
+    if (configuringCursorHold) {
+        CursorHoldConfigDialog(onDismiss = { configuringCursorHold = false })
     }
 
     Column(
@@ -71,7 +98,16 @@ fun MappingScreen(onBack: () -> Unit, onOpenProfiles: () -> Unit) {
             val buttons = grouped[category] ?: continue
             SectionTitle(category.title)
             DividedCard(buttons.map { source ->
-                { MappingRow(source, mappings.getValue(source)) { editing = source } }
+                {
+                    MappingRow(
+                        source = source,
+                        target = mappings.getValue(source),
+                        onClick = { editing = source },
+                        onConfigure = if (mappings.getValue(source) == XboxTarget.CURSOR_HOLD) {
+                            { configuringCursorHold = true }
+                        } else null
+                    )
+                }
             })
         }
         Spacer(Modifier.height(16.dp))
@@ -79,7 +115,12 @@ fun MappingScreen(onBack: () -> Unit, onOpenProfiles: () -> Unit) {
 }
 
 @Composable
-private fun MappingRow(source: SteamButton, target: XboxTarget, onClick: () -> Unit) {
+private fun MappingRow(
+    source: SteamButton,
+    target: XboxTarget,
+    onClick: () -> Unit,
+    onConfigure: (() -> Unit)? = null,
+) {
     Row(
         Modifier.fillMaxWidth().focusRing(RectangleShape).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -93,6 +134,18 @@ private fun MappingRow(source: SteamButton, target: XboxTarget, onClick: () -> U
             style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
             color = if (target == XboxTarget.NONE) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
         )
+        if (onConfigure != null) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(36.dp).focusRing(CircleShape),
+            ) {
+                IconButton(onClick = onConfigure) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Configure Hold for Cursor Mode", modifier = Modifier.size(20.dp))
+                }
+            }
+        }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.primary)
     }
 }
@@ -112,7 +165,13 @@ private fun ButtonGlyph(iconRes: Int?, label: String) {
 }
 
 @Composable
-private fun RemapDialog(source: SteamButton, current: XboxTarget, onDismiss: () -> Unit, onPick: (XboxTarget) -> Unit) {
+private fun RemapDialog(
+    source: SteamButton,
+    current: XboxTarget,
+    onDismiss: () -> Unit,
+    onConfigureCursorHold: () -> Unit,
+    onPick: (XboxTarget) -> Unit,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Remap ${source.displayName}") },
@@ -122,12 +181,205 @@ private fun RemapDialog(source: SteamButton, current: XboxTarget, onDismiss: () 
                     ChoiceRow(
                         target.displayName, target == current, { onPick(target) },
                         leading = if (target == current) null else { { ButtonGlyph(targetIconFor(target), shortLabelFor(target)) } },
+                        badge = if (target == XboxTarget.CURSOR_HOLD) {
+                            {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(36.dp).focusRing(CircleShape),
+                                ) {
+                                    IconButton(onClick = onConfigureCursorHold) {
+                                        Icon(Icons.Filled.MoreVert, contentDescription = "Configure Hold for Cursor Mode", modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                            }
+                        } else null,
                     )
                 }
             }
         },
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun CursorHoldConfigDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var sensitivity by remember { mutableFloatStateOf(Prefs.getCursorHoldSensitivity(context)) }
+    var scrollSpeed by remember { mutableFloatStateOf(Prefs.getCursorHoldScrollSpeed(context)) }
+    var touchMode by remember { mutableStateOf(Prefs.getCursorHoldTouchMode(context)) }
+    val selectedButtons = remember {
+        mutableStateListOf<SteamButton>().apply { addAll(Prefs.getCursorHoldClickButtons(context)) }
+    }
+
+    fun toggleButton(btn: SteamButton) {
+        if (btn in selectedButtons) {
+            selectedButtons.remove(btn)
+        } else {
+            selectedButtons.add(btn)
+        }
+        Prefs.setCursorHoldClickButtons(context, selectedButtons.toSet())
+    }
+
+    fun setTouchModeEnabled(enabled: Boolean) {
+        touchMode = enabled
+        Prefs.setCursorHoldTouchMode(context, enabled)
+        if (enabled && !Settings.canDrawOverlays(context)) {
+            Toast.makeText(
+                context,
+                "Please allow 'Display over other apps' so the touch cursor reticle can be shown",
+                Toast.LENGTH_LONG
+            ).show()
+            try {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:${context.packageName}")
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (_: Throwable) {}
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Configure Hold for Cursor Mode") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRing(RectangleShape)
+                        .clickable { setTouchModeEnabled(!touchMode) }
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Simulate Finger Touch",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            if (touchMode) "Injects real touchscreen taps & drags (works in games that ignore mouse clicks)"
+                            else "Uses Android system mouse cursor (standard pointer)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = touchMode,
+                        onCheckedChange = { setTouchModeEnabled(it) },
+                    )
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column {
+                    Text(
+                        "Cursor sensitivity: %.1f×".format(sensitivity),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Slider(
+                        value = sensitivity,
+                        valueRange = 0.1f..5.0f,
+                        onValueChange = {
+                            sensitivity = Math.round(it * 10) / 10f
+                            Prefs.setCursorHoldSensitivity(context, sensitivity)
+                        },
+                        modifier = Modifier.focusRing(CircleShape).onPreviewKeyEvent { event ->
+                            val direction = when (event.key) {
+                                Key.DirectionRight -> 1
+                                Key.DirectionLeft -> -1
+                                else -> return@onPreviewKeyEvent false
+                            }
+                            if (event.type == KeyEventType.KeyDown) {
+                                val next = (sensitivity + direction * 0.1f).coerceIn(0.1f..5.0f)
+                                sensitivity = Math.round(next * 10) / 10f
+                                Prefs.setCursorHoldSensitivity(context, sensitivity)
+                            }
+                            true
+                        },
+                    )
+                }
+                Column {
+                    Text(
+                        "Scroll speed: %.1f×".format(scrollSpeed),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Slider(
+                        value = scrollSpeed,
+                        valueRange = 0.1f..5.0f,
+                        onValueChange = {
+                            scrollSpeed = Math.round(it * 10) / 10f
+                            Prefs.setCursorHoldScrollSpeed(context, scrollSpeed)
+                        },
+                        modifier = Modifier.focusRing(CircleShape).onPreviewKeyEvent { event ->
+                            val direction = when (event.key) {
+                                Key.DirectionRight -> 1
+                                Key.DirectionLeft -> -1
+                                else -> return@onPreviewKeyEvent false
+                            }
+                            if (event.type == KeyEventType.KeyDown) {
+                                val next = (scrollSpeed + direction * 0.1f).coerceIn(0.1f..5.0f)
+                                scrollSpeed = Math.round(next * 10) / 10f
+                                Prefs.setCursorHoldScrollSpeed(context, scrollSpeed)
+                            }
+                            true
+                        },
+                    )
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Text(
+                    "Click / Confirm buttons (multi-select)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    if (touchMode) "Selected buttons tap/drag at the cursor position while the modifier is held."
+                    else "Selected buttons simulate a mouse Left Click while the cursor modifier is held.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LazyColumn(Modifier.heightIn(max = 220.dp)) {
+                    items(SteamButton.entries) { btn ->
+                        val isSelected = btn in selectedButtons
+                        ChoiceRow(
+                            title = btn.displayName,
+                            selected = isSelected,
+                            onClick = { toggleButton(btn) },
+                            leading = { ButtonGlyph(sourceIconFor(btn), btn.shortLabel) },
+                            badge = {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = null,
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                sensitivity = 1.0f
+                scrollSpeed = 1.0f
+                touchMode = false
+                Prefs.setCursorHoldSensitivity(context, 1.0f)
+                Prefs.setCursorHoldScrollSpeed(context, 1.0f)
+                Prefs.setCursorHoldTouchMode(context, false)
+                Prefs.setCursorHoldClickMask(context, Prefs.DEFAULT_CURSOR_HOLD_CLICK_MASK)
+                selectedButtons.clear()
+                selectedButtons.addAll(Prefs.getCursorHoldClickButtons(context))
+            }) { Text("Reset") }
+        },
     )
 }
 
@@ -193,4 +445,7 @@ private fun shortLabelFor(t: XboxTarget): String = when (t) {
     XboxTarget.KB_SPACE -> "␣"
     XboxTarget.KB_BACKSPACE -> "⌫"
     XboxTarget.KB_MENU -> "☰"
+    XboxTarget.CURSOR_HOLD -> "🖱"
+    XboxTarget.MOUSE_LEFT -> "L🖱"
+    XboxTarget.MOUSE_RIGHT -> "R🖱"
 }

@@ -35,6 +35,10 @@ object BackupManager {
             put("rumbleIntensity", Prefs.getRumbleIntensity(context))
             put("mouseSensitivity", Prefs.getMouseSensitivity(context).toDouble())
             put("trackpadAsMouse", Prefs.getTrackpadAsMouseInGamepad(context))
+            put("cursorHoldSensitivity", Prefs.getCursorHoldSensitivity(context).toDouble())
+            put("cursorHoldScrollSpeed", Prefs.getCursorHoldScrollSpeed(context).toDouble())
+            put("cursorHoldClickMask", Prefs.getCursorHoldClickMask(context))
+            put("cursorHoldTouchMode", Prefs.getCursorHoldTouchMode(context))
             put("mapping", JSONObject().apply {
                 Prefs.getAllMappings(context).forEach { (btn, target) -> put(btn.name, target.ordinal) }
             })
@@ -66,6 +70,10 @@ object BackupManager {
             if (live.has("rumbleIntensity")) Prefs.setRumbleIntensity(context, live.optInt("rumbleIntensity", 100))
             if (live.has("mouseSensitivity")) Prefs.setMouseSensitivity(context, live.optDouble("mouseSensitivity", 1.0).toFloat())
             if (live.has("trackpadAsMouse")) Prefs.setTrackpadAsMouseInGamepad(context, live.optBoolean("trackpadAsMouse", true))
+            if (live.has("cursorHoldSensitivity")) Prefs.setCursorHoldSensitivity(context, live.optDouble("cursorHoldSensitivity", 1.0).toFloat())
+            if (live.has("cursorHoldScrollSpeed")) Prefs.setCursorHoldScrollSpeed(context, live.optDouble("cursorHoldScrollSpeed", 1.0).toFloat())
+            if (live.has("cursorHoldClickMask")) Prefs.setCursorHoldClickMask(context, live.optInt("cursorHoldClickMask", Prefs.DEFAULT_CURSOR_HOLD_CLICK_MASK))
+            if (live.has("cursorHoldTouchMode")) Prefs.setCursorHoldTouchMode(context, live.optBoolean("cursorHoldTouchMode", false))
             live.optJSONObject("mapping")?.let { mapObj ->
                 val targets = XboxTarget.values()
                 SteamButton.values().forEach { btn ->

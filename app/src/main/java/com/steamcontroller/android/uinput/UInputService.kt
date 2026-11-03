@@ -3,7 +3,11 @@ package com.steamcontroller.android.uinput
 import com.steamcontroller.android.ipc.IUInputService
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
+import android.view.InputDevice
+import android.view.InputEvent
+import android.view.MotionEvent
 import java.io.File
 
 // Bound by Shizuku.bindUserService() — this code runs in a separate process
@@ -102,6 +106,74 @@ class UInputService : IUInputService.Stub {
             UInputNative.sendMouseFrame(relX, relY, scrollY, keys)
         } catch (t: Throwable) {
             Log.e(TAG, "sendMouseFrame failed: ${t.message}")
+        }
+    }
+
+    override fun setMouseConnected(connected: Boolean) {
+        try {
+            UInputNative.setMouseConnected(connected)
+        } catch (t: Throwable) {
+            Log.e(TAG, "setMouseConnected failed: ${t.message}")
+        }
+    }
+
+    private var inputManagerInstance: Any? = null
+    private var injectInputEventMethod: java.lang.reflect.Method? = null
+    private var touchDownTime: Long = 0L
+
+    private fun ensureInputManager(): Boolean {
+        if (inputManagerInstance != null && injectInputEventMethod != null) return true
+        return try {
+            val smClass = Class.forName("android.os.ServiceManager")
+            val getService = smClass.getMethod("getService", String::class.java)
+            val binder = getService.invoke(null, "input") as? android.os.IBinder ?: return false
+            val stubClass = Class.forName("android.hardware.input.IInputManager\$Stub")
+            val asInterface = stubClass.getMethod("asInterface", android.os.IBinder::class.java)
+            inputManagerInstance = asInterface.invoke(null, binder)
+            injectInputEventMethod = inputManagerInstance!!.javaClass.getMethod(
+                "injectInputEvent",
+                InputEvent::class.java,
+                Int::class.javaPrimitiveType
+            )
+            true
+        } catch (t: Throwable) {
+            Log.e(TAG, "ensureInputManager failed: ${t.message}")
+            false
+        }
+    }
+
+    override fun injectTouch(action: Int, x: Float, y: Float) {
+        try {
+            if (!ensureInputManager()) return
+            val now = SystemClock.uptimeMillis()
+            if (action == MotionEvent.ACTION_DOWN) {
+                touchDownTime = now
+            }
+            val downTime = if (touchDownTime > 0L) touchDownTime else now
+
+            val prop = MotionEvent.PointerProperties().apply {
+                id = 0
+                toolType = MotionEvent.TOOL_TYPE_FINGER
+            }
+            val coord = MotionEvent.PointerCoords().apply {
+                this.x = x
+                this.y = y
+                pressure = if (action == MotionEvent.ACTION_UP) 0f else 1f
+                size = 1f
+            }
+            val ev = MotionEvent.obtain(
+                downTime, now,
+                action,
+                1, arrayOf(prop), arrayOf(coord),
+                0, 0,
+                1f, 1f,
+                0, 0,
+                InputDevice.SOURCE_TOUCHSCREEN, 0
+            )
+            injectInputEventMethod?.invoke(inputManagerInstance, ev, 0)
+            ev.recycle()
+        } catch (t: Throwable) {
+            Log.e(TAG, "injectTouch failed: ${t.message}")
         }
     }
 
