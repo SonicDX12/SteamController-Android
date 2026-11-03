@@ -74,6 +74,7 @@ static const gamepad_profile* find_profile(int id) {
 static int g_fd_gamepad = -1;
 static int g_fd_mouse   = -1;
 static int g_fd_kbd     = -1;
+static int g_active_profile_id = 0;
 
 // Cached "last frame" state for delta encoding in sendMouseFrame.
 // Reset on every destroy_devices() so a new device starts from a clean slate.
@@ -269,6 +270,7 @@ static void destroy_devices() {
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_steamcontroller_android_uinput_UInputNative_createDevice(JNIEnv*, jclass, jint profileId) {
     const gamepad_profile* prof = find_profile(profileId);
+    g_active_profile_id = prof->id;
     LOGI("createDevice: profile=%d (VID=0x%04X PID=0x%04X name=\"%s\")",
          prof->id, prof->vid, prof->pid, prof->name);
 
@@ -337,11 +339,10 @@ Java_com_steamcontroller_android_uinput_UInputNative_createDevice(JNIEnv*, jclas
     LOGI("Virtual gamepad created (profile=%d), fd=%d", prof->id, fd);
     g_fd_gamepad = fd;
 
-    // Sidecar mouse + keyboard — non-fatal if either fails (gamepad still works).
-    g_fd_mouse = create_mouse_fd(prof->vid, (uint16_t)(prof->pid + 0x100));
-    if (g_fd_mouse < 0) {
-        LOGE("Sidecar mouse creation failed — trackpad-as-cursor will be unavailable");
-    }
+    // Sidecar keyboard — non-fatal if it fails (gamepad still works).
+    // Note: Sidecar mouse (g_fd_mouse) is created on-demand when cursor events occur,
+    // or destroyed via setMouseConnected(false) so Android immediately hides the pointer
+    // when Hold for Cursor Mode is released.
     g_fd_kbd = create_keyboard_fd(prof->vid, (uint16_t)(prof->pid + 0x200), /*full_alpha=*/false);
     if (g_fd_kbd < 0) {
         LOGE("Sidecar keyboard creation failed — key mappings on back paddles will be unavailable");
@@ -485,6 +486,15 @@ Java_com_steamcontroller_android_uinput_UInputNative_sendMouseFrame(
     const int mouse_bits = keys & ((1 << 16) | (1 << 17) | (1 << 18));
     const int kbd_bits   = keys & ((1 << MOUSE_KEY_COUNT) - 1);
 
+    // Lazily create the sidecar mouse fd if a mouse event is being sent while it's disconnected
+    if (g_fd_mouse < 0 && (relX != 0 || relY != 0 || scrollY != 0 || mouse_bits != 0)) {
+        const gamepad_profile* prof = find_profile(g_active_profile_id);
+        uint16_t mouse_pid = prof->mouse_mode ? prof->pid : (uint16_t)(prof->pid + 0x100);
+        g_fd_mouse = create_mouse_fd(prof->vid, mouse_pid);
+        g_last_mouse_buttons = 0;
+        LOGI("Lazy-created sidecar mouse fd=%d", g_fd_mouse);
+    }
+
     // Mouse fd: motion + button edges
     if (g_fd_mouse >= 0) {
         bool any_event = false;
@@ -512,6 +522,35 @@ Java_com_steamcontroller_android_uinput_UInputNative_sendMouseFrame(
             }
             write_event(g_fd_kbd, EV_SYN, SYN_REPORT, 0);
             g_last_kbd_keys = kbd_bits;
+        }
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_steamcontroller_android_uinput_UInputNative_setMouseConnected(
+        JNIEnv*, jclass, jboolean connected) {
+    if (connected) {
+        if (g_fd_mouse < 0) {
+            const gamepad_profile* prof = find_profile(g_active_profile_id);
+            uint16_t mouse_pid = prof->mouse_mode ? prof->pid : (uint16_t)(prof->pid + 0x100);
+            g_fd_mouse = create_mouse_fd(prof->vid, mouse_pid);
+            g_last_mouse_buttons = 0;
+            LOGI("setMouseConnected(true) → fd=%d", g_fd_mouse);
+        }
+    } else {
+        if (g_fd_mouse >= 0) {
+            // Release any held mouse buttons before destroying the device
+            if (g_last_mouse_buttons != 0) {
+                write_event(g_fd_mouse, EV_KEY, BTN_LEFT,   0);
+                write_event(g_fd_mouse, EV_KEY, BTN_RIGHT,  0);
+                write_event(g_fd_mouse, EV_KEY, BTN_MIDDLE, 0);
+                write_event(g_fd_mouse, EV_SYN, SYN_REPORT, 0);
+                g_last_mouse_buttons = 0;
+            }
+            ioctl(g_fd_mouse, UI_DEV_DESTROY);
+            close(g_fd_mouse);
+            g_fd_mouse = -1;
+            LOGI("setMouseConnected(false) → destroyed sidecar mouse fd (cursor hidden)");
         }
     }
 }

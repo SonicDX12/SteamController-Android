@@ -51,8 +51,12 @@ object Prefs {
     private const val KEY_R_INVERT_Y = "calib_r_invy"
 
     private const val KEY_RUMBLE_INTENSITY = "rumble_intensity"  // 0..100
-    private const val KEY_MOUSE_SENSITIVITY = "mouse_sensitivity_x10"  // 1..30 → 0.1x..3.0x
+    private const val KEY_MOUSE_SENSITIVITY = "mouse_sensitivity_x10"  // 1..50 → 0.1x..5.0x
     private const val KEY_TRACKPAD_AS_MOUSE = "trackpad_as_mouse_gamepad"  // sidecar mouse while in Xbox/PS profiles
+    private const val KEY_CURSOR_HOLD_SENSITIVITY = "cursor_hold_sensitivity_x10"  // 1..50 → 0.1x..5.0x
+    private const val KEY_CURSOR_HOLD_SCROLL_SPEED = "cursor_hold_scroll_speed_x10"  // 1..50 → 0.1x..5.0x
+    private const val KEY_CURSOR_HOLD_CLICK_MASK = "cursor_hold_click_mask"  // bitmask of SteamButton.mask for Left Click in Cursor Hold Mode
+    private const val KEY_CURSOR_HOLD_TOUCH_MODE = "cursor_hold_touch_mode"  // true = Touch Simulation, false = Mouse Cursor
     private const val KEY_NAMED_PROFILES = "named_profiles_json"
     private const val KEY_ACTIVE_NAMED_PROFILE_ID = "active_named_profile_id"
     private const val KEY_THEME_MODE = "theme_mode"
@@ -190,12 +194,12 @@ object Prefs {
         prefs(context).edit().putInt(KEY_RUMBLE_INTENSITY, percent.coerceIn(0, 100)).apply()
     }
 
-    /** Mouse cursor sensitivity multiplier, 0.1x..3.0x. */
+    /** Mouse cursor sensitivity multiplier, 0.1x..5.0x. */
     fun getMouseSensitivity(context: Context): Float =
-        (prefs(context).getInt(KEY_MOUSE_SENSITIVITY, 10).coerceIn(1, 30)) / 10f
+        (prefs(context).getInt(KEY_MOUSE_SENSITIVITY, 10).coerceIn(1, 50)) / 10f
 
     fun setMouseSensitivity(context: Context, multiplier: Float) {
-        val v = (multiplier * 10f).toInt().coerceIn(1, 30)
+        val v = (multiplier * 10f).toInt().coerceIn(1, 50)
         prefs(context).edit().putInt(KEY_MOUSE_SENSITIVITY, v).apply()
     }
 
@@ -205,6 +209,54 @@ object Prefs {
 
     fun setTrackpadAsMouseInGamepad(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_TRACKPAD_AS_MOUSE, enabled).apply()
+    }
+
+    // ─── Hold for Cursor Mode settings ───────────────────────────────────────
+    val DEFAULT_CURSOR_HOLD_CLICK_MASK: Int = SteamButton.A.mask or SteamButton.RT.mask
+
+    /** Joystick cursor sensitivity multiplier in Hold for Cursor Mode, 0.1x..5.0x (default 1.0x). */
+    fun getCursorHoldSensitivity(context: Context): Float =
+        (prefs(context).getInt(KEY_CURSOR_HOLD_SENSITIVITY, 10).coerceIn(1, 50)) / 10f
+
+    fun setCursorHoldSensitivity(context: Context, multiplier: Float) {
+        val v = (multiplier * 10f).toInt().coerceIn(1, 50)
+        prefs(context).edit().putInt(KEY_CURSOR_HOLD_SENSITIVITY, v).apply()
+    }
+
+    /** Joystick scroll speed multiplier in Hold for Cursor Mode, 0.1x..5.0x (default 1.0x). */
+    fun getCursorHoldScrollSpeed(context: Context): Float =
+        (prefs(context).getInt(KEY_CURSOR_HOLD_SCROLL_SPEED, 10).coerceIn(1, 50)) / 10f
+
+    fun setCursorHoldScrollSpeed(context: Context, multiplier: Float) {
+        val v = (multiplier * 10f).toInt().coerceIn(1, 50)
+        prefs(context).edit().putInt(KEY_CURSOR_HOLD_SCROLL_SPEED, v).apply()
+    }
+
+    /** Bitmask of SteamButton.mask values that act as Left Click / Confirm while Hold for Cursor Mode is active. */
+    fun getCursorHoldClickMask(context: Context): Int =
+        prefs(context).getInt(KEY_CURSOR_HOLD_CLICK_MASK, DEFAULT_CURSOR_HOLD_CLICK_MASK)
+
+    fun setCursorHoldClickMask(context: Context, mask: Int) {
+        prefs(context).edit().putInt(KEY_CURSOR_HOLD_CLICK_MASK, mask).apply()
+    }
+
+    fun getCursorHoldClickButtons(context: Context): Set<SteamButton> {
+        val mask = getCursorHoldClickMask(context)
+        return SteamButton.entries.filterTo( linkedSetOf() ) { (mask and it.mask) != 0 }
+    }
+
+    fun setCursorHoldClickButtons(context: Context, buttons: Set<SteamButton>) {
+        var mask = 0
+        buttons.forEach { mask = mask or it.mask }
+        setCursorHoldClickMask(context, mask)
+    }
+
+    /** True when Hold for Cursor Mode simulates finger touch (`SOURCE_TOUCHSCREEN`) instead of hardware mouse (`SOURCE_MOUSE`). */
+    fun getCursorHoldTouchMode(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_CURSOR_HOLD_TOUCH_MODE, false)
+
+    fun setCursorHoldTouchMode(context: Context, touchMode: Boolean) {
+        prefs(context).edit().putBoolean(KEY_CURSOR_HOLD_TOUCH_MODE, touchMode).apply()
     }
 
     // ─── Button mapping ──────────────────────────────────────────────────────
@@ -226,6 +278,10 @@ object Prefs {
     fun resetMappings(context: Context) {
         val edit = prefs(context).edit()
         SteamButton.values().forEach { edit.remove(mapKey(it)) }
+        edit.remove(KEY_CURSOR_HOLD_SENSITIVITY)
+        edit.remove(KEY_CURSOR_HOLD_SCROLL_SPEED)
+        edit.remove(KEY_CURSOR_HOLD_CLICK_MASK)
+        edit.remove(KEY_CURSOR_HOLD_TOUCH_MODE)
         edit.apply()
     }
 
@@ -289,6 +345,10 @@ object Prefs {
             rumbleIntensity = getRumbleIntensity(context),
             mapping = mappingMap,
             boundPackages = boundPkgs,
+            cursorHoldSensitivity = getCursorHoldSensitivity(context),
+            cursorHoldScrollSpeed = getCursorHoldScrollSpeed(context),
+            cursorHoldClickMask = getCursorHoldClickMask(context),
+            cursorHoldTouchMode = getCursorHoldTouchMode(context),
         )
     }
 
@@ -312,6 +372,10 @@ object Prefs {
         setMouseSensitivity(context, profile.mouseSensitivity)
         setTrackpadAsMouseInGamepad(context, profile.trackpadAsMouse)
         setRumbleIntensity(context, profile.rumbleIntensity)
+        setCursorHoldSensitivity(context, profile.cursorHoldSensitivity)
+        setCursorHoldScrollSpeed(context, profile.cursorHoldScrollSpeed)
+        setCursorHoldClickMask(context, profile.cursorHoldClickMask)
+        setCursorHoldTouchMode(context, profile.cursorHoldTouchMode)
         // Mapping — ordinals stored against XboxTarget. Out-of-range values fall back to NONE.
         val targets = XboxTarget.values()
         SteamButton.values().forEach { btn ->

@@ -140,7 +140,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
             Column(Modifier.padding(16.dp)) {
                 Text("${stringResource(R.string.calib_mouse_sensitivity)}: %.1f×".format(sensitivity), style = MaterialTheme.typography.titleMedium)
                 StepSlider(
-                    value = sensitivity, valueRange = 0.1f..3f, step = 0.1f,
+                    value = sensitivity, valueRange = 0.1f..5f, step = 0.1f,
                     onValueChange = { sensitivity = Math.round(it * 10) / 10f; Prefs.setMouseSensitivity(context, sensitivity) },
                 )
             }

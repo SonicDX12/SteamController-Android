@@ -36,6 +36,9 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Floating cursor overlay for Touch Simulation mode in Hold for Cursor Mode -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- Needed so installed-apps query (AppPickerActivity) sees launcher apps on Android 11+. -->
     <queries>
         <intent>
